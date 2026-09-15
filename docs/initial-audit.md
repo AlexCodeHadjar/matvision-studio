@@ -28,3 +28,12 @@ NOT RUN. No PASS until Tauri binary launches, volume geometry/camera/lighting wo
 
 ## Release verification constraints
 A fresh VM or second clean Windows machine has not been identified. Installation/uninstallation on this host cannot be described as clean-machine verification. Record evidence accurately and do not release with unmet blocking gates.
+
+**Scope update from user, 2026-09-15:** clean-machine verification is waived for this delivery ("Пока обойдемся без этого"). Installation, launch and uninstall checks on the current Windows host remain required. The final checklist must record this as a user-approved exclusion, not a passing clean-machine test.
+
+## Audit follow-up
+
+- Portable Rust 1.98.1, MSVC 19.50 and Windows SDK were installed under workspace work/toolchain. A compiled native link probe executed successfully. No global PATH changes.
+- The machine exposes Intel UHD Graphics and NVIDIA GeForce RTX 3050 Laptop GPU; CPU is Intel Core i5-12450H. WindowsSandbox.exe is absent.
+- ESLint/TypeScript peer compatibility requires TypeScript 6.0.3 with typescript-eslint 8.70.0. TypeScript 7.0.2 was verified but is incompatible with this current parser. pnpm peers check is clean after this documented bootstrap adjustment.
+- Frontend build, lint, typecheck and the initial 11 CPU tests passed. Initial screenshot inspection found depth fighting in the top cap; that visual baseline was rejected and is being corrected before gate acceptance.
