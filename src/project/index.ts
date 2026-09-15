@@ -8,6 +8,7 @@ import type {
   Vector3Tuple,
 } from '../contracts';
 import { getProduct } from '../products';
+import { PLACEMENT_SURFACES } from '../contracts';
 
 export const PROJECT_FORMAT = 'matvision-project' as const;
 export const PROJECT_VERSION = 1 as const;
@@ -39,6 +40,7 @@ export function createDefaultProject(productId = 'deskmat-900x400'): ProjectStat
     materialPreset: product.surfaceMaterialPreset,
     roughness: 0.88,
     environment: 'neutral-studio',
+    placementSurface: 'studio',
     layout: createDefaultLayout(),
     source: null,
     camera: {
@@ -187,6 +189,12 @@ export function validateProjectState(value: unknown): ProjectState {
       input.environment,
       ['neutral-studio', 'bright-studio', 'warm-room', 'desk-setup'],
       'environment',
+    ),
+    // Version 1 files written before 0.1.2 had only the neutral studio floor.
+    placementSurface: option(
+      input.placementSurface === undefined ? 'studio' : input.placementSurface,
+      PLACEMENT_SURFACES,
+      'placement surface',
     ),
     layout: layout(input.layout),
     source: source(input.source),

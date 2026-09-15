@@ -2,6 +2,15 @@
 export type EdgePreset = 'standard-cut' | 'stitched';
 export type MaterialPreset = 'smooth-cloth' | 'fine-weave' | 'gaming-fabric';
 export type EnvironmentPreset = 'neutral-studio' | 'bright-studio' | 'warm-room' | 'desk-setup';
+export type PlacementSurface = 'studio' | 'white-desk' | 'graphite' | 'oak' | 'walnut' | 'concrete';
+export const PLACEMENT_SURFACES: readonly PlacementSurface[] = [
+  'studio',
+  'white-desk',
+  'graphite',
+  'oak',
+  'walnut',
+  'concrete',
+];
 export type CameraPreset = 'top' | 'perspective' | 'low-angle' | 'close-up' | 'underside';
 export type QualityPreset = 'low' | 'balanced' | 'high' | 'ultra';
 export type FitMode = 'cover' | 'contain' | 'stretch';
@@ -85,6 +94,7 @@ export interface ProjectState {
   materialPreset: MaterialPreset;
   roughness: number;
   environment: EnvironmentPreset;
+  placementSurface: PlacementSurface;
   layout: PrintLayout;
   source: PrintSource | null;
   camera: CameraState;

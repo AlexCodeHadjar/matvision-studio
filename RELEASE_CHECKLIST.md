@@ -1,5 +1,11 @@
 # MatVision Studio — release checklist
 
+## 0.1.2 surface selection — 2026-09-15
+
+Adds six placement surfaces, persistence with backward-compatible defaults and a small real directional shadow. Frontend TypeScript/Vite compilation completed. Full automated regression and performance checks remain skipped at the user's request. Earlier version results below are historical and do not establish acceptance for 0.1.2.
+
+The Windows release build completed and the 0.1.2 installer returned exit code 0. The install registry reports 0.1.2; the desktop shortcut was retained and the installed application launched. See [installation record](docs/release/desktop-installation-0.1.2.json) and [artifact hashes](docs/release/artifact-manifest-0.1.2.json).
+
 ## 0.1.1 appearance update — 2026-09-15
 
 Overlock geometry, rubber backing and studio lighting were revised from the user's reference images. Production TypeScript/Vite and Windows release builds completed. The instruction to skip remaining checks continues to apply: regression suites, golden comparisons, benchmarks and clean-machine installation tests were not rerun. Historical 0.1.0 results below do not establish acceptance for 0.1.1. See `CHANGELOG.md` and `docs/visual-review.md` for the change scope.

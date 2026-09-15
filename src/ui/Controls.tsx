@@ -162,6 +162,23 @@ export function MaterialControls({
           <option value="desk-setup">Desk Setup</option>
         </select>
       </label>
+      <label className="field-label">
+        Поверхность под ковриком
+        <select
+          aria-label="Поверхность под ковриком"
+          value={state.placementSurface}
+          onChange={(e) =>
+            onChange({ placementSurface: e.target.value as ProjectState['placementSurface'] })
+          }
+        >
+          <option value="studio">Нейтральная студия</option>
+          <option value="white-desk">Белый стол</option>
+          <option value="graphite">Матовый графит</option>
+          <option value="oak">Светлый дуб</option>
+          <option value="walnut">Тёмный орех</option>
+          <option value="concrete">Светлый бетон</option>
+        </select>
+      </label>
     </section>
   );
 }

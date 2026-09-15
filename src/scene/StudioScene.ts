@@ -13,7 +13,6 @@ import {
   LineSegments,
   Mesh,
   MeshBasicMaterial,
-  MeshStandardMaterial,
   PCFShadowMap,
   PerspectiveCamera,
   PlaneGeometry,
@@ -41,6 +40,7 @@ import { createStitchedGeometry, STITCH_PITCH_M } from '../geometry/stitch';
 import { createFabricMaterial, createInitialFabric } from '../materials/fabric';
 import { createRubberMaterial } from '../materials/rubber';
 import { createStitchedMaterial } from '../materials/stitched';
+import { createPlacementSurfaceMaterial } from '../materials/placementSurface';
 import { configureColorPipeline, markColorTexture } from '../color/ColorPipeline';
 import { createStudioEnvironment, getEnvironmentSettings } from './environment';
 import { QUALITY_SETTINGS } from './quality';
@@ -65,8 +65,8 @@ export class StudioScene implements SceneController {
   private readonly stitches: ReturnType<typeof createStitchedMaterial>;
   private readonly artwork: ReturnType<typeof createInitialFabric>;
   private readonly printLayer: ReturnType<typeof applyPrintLayer>;
-  private readonly floorMaterial = new MeshStandardMaterial({ roughness: 0.97 });
-  private readonly floor = new Mesh(new PlaneGeometry(200, 200), this.floorMaterial);
+  private readonly placementSurface: ReturnType<typeof createPlacementSurfaceMaterial>;
+  private readonly floor: Mesh;
   private readonly backgroundMaterial = new MeshBasicMaterial({
     side: BackSide,
     depthWrite: false,
@@ -126,6 +126,11 @@ export class StudioScene implements SceneController {
     configureColorPipeline(this.renderer);
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = PCFShadowMap;
+    this.placementSurface = createPlacementSurfaceMaterial(
+      200,
+      Math.min(8, this.renderer.capabilities.getMaxAnisotropy()),
+    );
+    this.floor = new Mesh(new PlaneGeometry(200, 200), this.placementSurface.material);
     const product = getProduct(state.productId);
     this.fabric = createFabricMaterial(product, state);
     this.rubber = createRubberMaterial(product);
@@ -152,9 +157,9 @@ export class StudioScene implements SceneController {
     this.key.shadow.camera.bottom = -1.1;
     this.key.shadow.camera.near = 0.1;
     this.key.shadow.camera.far = 5;
-    this.key.shadow.normalBias = 0.0003;
-    this.key.shadow.bias = -0.00001;
-    this.key.shadow.radius = 3;
+    this.key.shadow.normalBias = 0.00006;
+    this.key.shadow.bias = -0.000002;
+    this.key.shadow.intensity = 0.85;
     this.scene.add(this.key);
     this.undersideLight.position.set(-0.7, -0.9, 0.6);
     this.scene.add(this.undersideLight);
@@ -199,11 +204,24 @@ export class StudioScene implements SceneController {
       this.key.shadow.mapSize.set(quality.shadowSize, quality.shadowSize);
       this.key.shadow.needsUpdate = true;
     }
+    this.fitShadowToProduct();
+  }
+  private fitShadowToProduct() {
+    const product = getProduct(this.state.productId);
+    // Enclose every turntable angle, retaining resolution for a millimetre-scale shadow.
+    const extent = Math.hypot(product.widthMm, product.heightMm) / 2000 + 0.06;
+    const camera = this.key.shadow.camera;
+    camera.left = camera.bottom = -extent;
+    camera.right = camera.top = extent;
+    camera.updateProjectionMatrix();
+    // Keep a small soft edge in world units across the quality presets.
+    this.key.shadow.radius = Math.max(1, (0.002 * this.key.shadow.mapSize.x) / (2 * extent));
+    this.key.shadow.needsUpdate = true;
   }
   private applyEnvironmentSettings() {
     const env = getEnvironmentSettings(this.state.environment);
     this.backgroundMaterial.color.set(env.backgroundColor);
-    this.floorMaterial.color.set(env.floorColor);
+    this.placementSurface.update(this.state.placementSurface, env.floorColor);
     this.scene.fog = new Fog(env.backgroundColor, 3, 10);
     this.key.color.set(env.keyColor);
     this.key.intensity = env.keyIntensity;
@@ -337,6 +355,7 @@ export class StudioScene implements SceneController {
       this.mat.add(this.stitchThreads);
     }
     this.host.dataset.productId = product.id;
+    this.fitShadowToProduct();
     this.rebuildReferences();
   }
   update(state: ProjectState) {
@@ -356,6 +375,11 @@ export class StudioScene implements SceneController {
     this.references.visible = state.referenceMode && !this.rig.underside;
     if (newProduct) this.setCameraPreset('perspective');
     if (state.environment !== before.environment || qualityChanged) this.replaceEnvironment();
+    else if (state.placementSurface !== before.placementSurface)
+      this.placementSurface.update(
+        state.placementSurface,
+        getEnvironmentSettings(state.environment).floorColor,
+      );
     if (qualityChanged) {
       log('PERFORMANCE', 'quality-changed', { preset: state.quality });
       this.applyQuality();
@@ -561,7 +585,8 @@ export class StudioScene implements SceneController {
       materialBytes:
         this.fabric.ownedTextureBytes +
         this.rubber.ownedTextureBytes +
-        this.stitches.ownedTextureBytes,
+        this.stitches.ownedTextureBytes +
+        this.placementSurface.ownedTextureBytes,
       environmentWidth: this.environment.width,
       environmentHeight: this.environment.height,
       shadowSize: this.key.shadow.mapSize.x,
@@ -582,6 +607,7 @@ export class StudioScene implements SceneController {
       outputColorSpace: this.renderer.outputColorSpace,
       toneMapping: 'ACESFilmic',
       environmentId: this.state.environment,
+      placementSurface: this.state.placementSurface,
       fps: this.fps,
       frameTimeMs: this.fps > 0 ? 1000 / this.fps : 0,
       drawCalls: this.renderer.info.render.calls,
@@ -625,7 +651,7 @@ export class StudioScene implements SceneController {
     this.fabric.dispose();
     this.rubber.dispose();
     this.stitches.dispose();
-    this.floorMaterial.dispose();
+    this.placementSurface.dispose();
     this.backgroundMaterial.dispose();
     this.environment.dispose();
     this.key.shadow.dispose();

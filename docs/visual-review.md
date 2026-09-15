@@ -1,5 +1,11 @@
 # Visual review
 
+## 2026-09-15 — 0.1.2 placement surfaces and shadow
+
+Actual StudioScene exports were generated for the six surface choices during appearance work. The root engineer inspected neutral studio, oak and graphite renders: the surface color/wood grain is visible, the mat retains its print colors, and a narrow soft shadow appears at the contact edge. Representative captures: [oak](appearance-0.1.2/surface-oak.png) and [neutral studio](appearance-0.1.2/surface-studio.png).
+
+These are informal appearance captures. TypeScript/Vite compilation completed; automated regression, benchmark and golden comparison suites were not run, following the user's continuing instruction to skip checks.
+
 ## 2026-09-15 — 0.1.1 appearance revision
 
 The root engineer inspected actual StudioScene exports using hardware D3D11 Chromium during the requested appearance changes: [overlock close-up](appearance-0.1.1/overlock-close.png), [rubber close-up](appearance-0.1.1/rubber-close.png), [underside](appearance-0.1.1/rubber-overview.png), and [studio perspective](appearance-0.1.1/studio.png). The edge now wraps around the body with dense raised yarn and a smaller interlocking chain. The dark backing shows interleaved diagonal relief. Reduced studio and cloth reflection intensity preserves deeper print colors.

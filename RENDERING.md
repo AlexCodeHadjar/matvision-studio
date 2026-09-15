@@ -38,6 +38,12 @@ In 0.1.1, `createStitchedGeometry` produces a padded binding that wraps the top,
 
 ## HDR studio lighting
 
+### Placement surfaces (0.1.2)
+
+`createPlacementSurfaceMaterial` owns one reusable set of 512 × 512 albedo, normal and roughness maps. Neutral studio follows the environment floor color; white desk, graphite, oak, walnut and concrete have independent surface colors and roughness. Procedural wood grain and concrete detail repeat at a 0.6 m physical scale. Changing the selection updates the existing textures, and disposal releases all three maps and the material. Their memory is included in scene diagnostics. The `placementSurface` project field is saved and validated; missing values in older projects become `studio`.
+
+The receiver remains a real horizontal plane. The directional shadow camera encloses the product's diagonal plus a margin so the mat can rotate without clipping its shadow. Reduced bias preserves contact for thin products; PCF radius is derived from a 2 mm world-space filter footprint and the selected shadow resolution. Shadow intensity is 0.85. The shadow uses the actual body and binding geometry and is included in normal exports; no baked shadow image is added.
+
 `createStudioEnvironment(renderer, preset = 'neutral-studio', resolution = 512)` generates an original float panorama with radiance greater than 1 and convolves it with `PMREMGenerator`. The input is explicitly Linear-sRGB with `EquirectangularReflectionMapping`. Three's data-texture convention places positive Y at v=1; all broad light panels are above v=0.5. The temporary float input and generator are disposed in `finally`. The scene owns the returned render target.
 
 | Preset         | Intended appearance                                                                   |
