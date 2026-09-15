@@ -1,4 +1,6 @@
 //! Native shell. Rendering stays inside the WebGL2 frontend.
+mod commands;
+mod files;
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -20,7 +22,13 @@ fn runtime_info() -> RuntimeInfo {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![runtime_info])
+        .invoke_handler(tauri::generate_handler![
+            runtime_info,
+            commands::open_image,
+            commands::open_project,
+            commands::save_project,
+            commands::save_png
+        ])
         .setup(|_| {
             #[cfg(debug_assertions)]
             eprintln!("{{\"category\":\"NATIVE\",\"event\":\"shell-ready\"}}");

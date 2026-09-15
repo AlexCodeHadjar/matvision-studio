@@ -45,3 +45,21 @@ The final frozen first-gate scene (corrected geometry, HDR hemisphere, shadow ma
 `cargo clippy --locked --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings` passed in 1m58s with no findings.
 
 Startup, native E2E, and production installer checks must be recorded separately; this audit is not a release PASS. The user explicitly waived clean-machine testing for the current scope on 2026-09-15. Installation, execution, and uninstallation on this host remain required and must not be described as clean-machine verification.
+
+## Native file API
+
+`src/native/index.ts` provides `openNativeImage(path?)`, `openNativeProject(path?)`, `saveNativeProject(contents, path?)`, and `saveNativePng(bytes, path?)`. Omitted paths open parented native dialogs. Cancellation returns `null`; failures reject with a user-readable error. Explicit absolute paths pass through the same production validation and write functions and support automation, Unicode names, and spaces.
+
+The bridge uses `isTauri()` and reports a native-only error when called in a browser. PNG export sends a `Uint8Array` as binary Tauri IPC, with its optional UTF-8 path encoded in an ASCII request header. It avoids expanding image bytes into a JSON array. Commands verify the main window and packaged application origin; the development server is accepted only in debug builds. There is no filesystem plugin with global scope or external telemetry.
+
+Image import accepts PNG, JPEG, and WebP with matching filename extensions and signatures. It validates decoded data before returning the original encoded bytes as a data URL. The dimensions describe the original image after EXIF orientation; orientations 5–8 swap width and height. No pixels are re-encoded and no native colour simulation is applied. Limits match the frontend: 64 MiB encoded image, 65,535 pixels per dimension, 160 million pixels total, and a bounded 768 MiB native decode allocation. The temporary CPU image is dropped immediately after validation.
+
+Projects use the `.matvision` extension. Native code validates UTF-8, JSON-object structure, and a 256 MiB byte limit; version migration and application schema validation belong to `src/project/`. PNG export validates the signature, dimensions, and complete compressed pixel stream with a 256 MiB encoded limit.
+
+Saving writes a randomly named temporary file in the destination directory, flushes its contents, and atomically replaces the destination through `tempfile::NamedTempFile::persist`. Existing files are never deleted first. Failed validation preserves the previous file. Relative paths, parent traversal, Windows device paths, alternate streams, and non-file save destinations are rejected. File errors do not log or transmit user paths.
+
+### File implementation validation
+
+Twelve Rust tests pass: original PNG/JPEG/WebP bytes and dimensions; JPEG EXIF orientation; malformed images; encoded and decoded limits; project save/open/atomic overwrite; invalid-save preservation; Unicode and spaced filenames; invalid UTF-8/JSON; exact PNG export bytes; invalid paths; and rejection of remote command origins. Tests use isolated temporary directories below the local Cargo target directory. Native file-dialog cancellation and live IPC still require desktop integration testing.
+
+Stable dependency references: [rfd 0.17.2](https://docs.rs/rfd/0.17.2/rfd/), [image 0.25.10](https://docs.rs/image/0.25.10/image/), and [tempfile atomic persistence](https://docs.rs/tempfile/3.27.0/tempfile/struct.NamedTempFile.html#method.persist). Cargo.lock pins the complete dependency graph.

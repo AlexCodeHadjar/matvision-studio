@@ -8,3 +8,18 @@ export function log(
 ) {
   if (import.meta.env.DEV) console.info(JSON.stringify({ category, event, ...details }));
 }
+
+/** Error messages/stacks may contain filenames, source bytes or user-defined data. */
+export function logError(category: LogCategory, event: string, error: unknown) {
+  const errorKind =
+    error instanceof TypeError
+      ? 'TypeError'
+      : error instanceof RangeError
+        ? 'RangeError'
+        : error instanceof SyntaxError
+          ? 'SyntaxError'
+          : error instanceof Error
+            ? 'Error'
+            : 'Unknown';
+  log(category, event, { status: 'failed', errorKind });
+}
