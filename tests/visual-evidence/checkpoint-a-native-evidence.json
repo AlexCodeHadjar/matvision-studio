@@ -1,0 +1,30 @@
+{
+  "scene": {
+    "ready": true,
+    "renderer": "WebGL2",
+    "productId": "deskmat-900x400",
+    "widthM": 0.8999999761581421,
+    "heightM": 0.4000000059604645,
+    "thicknessM": 0.003000000026077032,
+    "frameCount": 361,
+    "cameraPosition": [0.7, 0.85, 0.85],
+    "outputColorSpace": "srgb",
+    "toneMapping": "ACESFilmic",
+    "environmentId": "neutral-studio",
+    "fps": 75.51669316106847,
+    "frameTimeMs": 13.242105263628458,
+    "drawCalls": 5,
+    "triangles": 1250,
+    "textures": 5,
+    "approximateTextureBytes": 7680000,
+    "rendererWidthPx": 1437,
+    "rendererHeightPx": 911,
+    "contextLost": false
+  },
+  "pixels": {
+    "width": 1438,
+    "height": 911,
+    "uniqueColors": 1723,
+    "luminanceVariance": 2141.8265635453354
+  }
+}

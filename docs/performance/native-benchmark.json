@@ -1,0 +1,86 @@
+{
+  "timestamp": "2026-09-15T10:17:41.255Z",
+  "runner": "Built production Tauri executable through native WebdriverIO/WebView2",
+  "binarySha256": "c3dce74d662948854602e2a57bc8cce3af6f6a4e9a84e190859f59ee0089dba9",
+  "os": "Windows_NT 10.0.26200 x64",
+  "cpu": "12th Gen Intel(R) Core(TM) i5-12450H",
+  "logicalCpus": 12,
+  "hostRamBytes": 16870006784,
+  "activeWebGL": {
+    "devicePixelRatio": 1.25,
+    "maxTextureSize": 16384,
+    "renderer": "ANGLE (Intel, Intel(R) UHD Graphics (0x000046A3) Direct3D11 vs_5_0 ps_5_0, D3D11)",
+    "unmaskedRendererAvailable": true,
+    "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/153.0.0.0 Safari/537.36 Edg/153.0.0.0",
+    "vendor": "Google Inc. (Intel)",
+    "windowHeight": 844,
+    "windowWidth": 1440
+  },
+  "methodology": "30-second foreground RAF samples after 5-second warmups; renderer frames cross-checked. Texture bytes are estimates, not driver VRAM.",
+  "samples": [
+    {
+      "label": "4K source · Balanced · perspective",
+      "elapsedMs": 30006.999999999996,
+      "observedFrames": 1856,
+      "renderedFrames": 1856,
+      "fps": 61.85223447862166,
+      "frameP50Ms": 13.900000000001455,
+      "frameP95Ms": 21,
+      "frameP99Ms": 21.145000000001897,
+      "maxFrameMs": 27.899999999999636,
+      "framesOver50Ms": 0,
+      "visibilityChanges": 0,
+      "focusLosses": 0,
+      "focusedAtEnd": true,
+      "diagnostics": {
+        "ready": true,
+        "renderer": "WebGL2",
+        "productId": "deskmat-900x400",
+        "widthM": 0.8999999761581421,
+        "heightM": 0.4000000059604645,
+        "thicknessM": 0.003000000026077032,
+        "frameCount": 2331,
+        "cameraPosition": [
+          0.7,
+          0.85,
+          0.85
+        ],
+        "cameraTarget": [
+          0,
+          0.0015,
+          0
+        ],
+        "cameraPreset": "perspective",
+        "fovDeg": 35,
+        "exposure": 1,
+        "outputColorSpace": "srgb",
+        "toneMapping": "ACESFilmic",
+        "environmentId": "neutral-studio",
+        "fps": 61.9752099175106,
+        "frameTimeMs": 16.135483870583197,
+        "drawCalls": 6,
+        "triangles": 1262,
+        "textures": 10,
+        "geometries": 4,
+        "programs": 5,
+        "approximateTextureBytes": 58885252,
+        "rendererWidthPx": 1420,
+        "rendererHeightPx": 911,
+        "contextLost": false,
+        "previewWidthPx": 4096,
+        "previewHeightPx": 2048,
+        "sourceWidthPx": 4096,
+        "sourceHeightPx": 2048,
+        "matRotationY": 0
+      },
+      "jsHeap": {
+        "limitBytes": 4395630592,
+        "totalBytes": 8411076,
+        "usedBytes": 7672348
+      }
+    }
+  ],
+  "replacements": [],
+  "boundedTextureCounts": false,
+  "status": "FAIL"
+}

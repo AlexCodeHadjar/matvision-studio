@@ -1,0 +1,80 @@
+[
+  {
+    "filename": "uv-circle.png",
+    "width": 1800,
+    "height": 800,
+    "bytes": 21362
+  },
+  {
+    "filename": "landscape-grid.png",
+    "width": 1800,
+    "height": 800,
+    "bytes": 22608
+  },
+  {
+    "filename": "square-rgb.png",
+    "width": 768,
+    "height": 768,
+    "bytes": 114379
+  },
+  {
+    "filename": "portrait-grid.png",
+    "width": 600,
+    "height": 1200,
+    "bytes": 12499
+  },
+  {
+    "filename": "panorama-grid.png",
+    "width": 4096,
+    "height": 512,
+    "bytes": 27975
+  },
+  {
+    "filename": "very-tall-grid.png",
+    "width": 256,
+    "height": 2048,
+    "bytes": 11383
+  },
+  {
+    "filename": "black.png",
+    "width": 512,
+    "height": 512,
+    "bytes": 1816
+  },
+  {
+    "filename": "white.png",
+    "width": 512,
+    "height": 512,
+    "bytes": 1822
+  },
+  {
+    "filename": "gray-50-srgb.png",
+    "width": 512,
+    "height": 512,
+    "bytes": 1830
+  },
+  {
+    "filename": "color-patches.png",
+    "width": 1200,
+    "height": 600,
+    "bytes": 8649
+  },
+  {
+    "filename": "high-resolution-grid.png",
+    "width": 8192,
+    "height": 4096,
+    "bytes": 330556
+  },
+  {
+    "filename": "small-low-resolution.png",
+    "width": 32,
+    "height": 16,
+    "bytes": 114
+  },
+  {
+    "filename": "transparent.png",
+    "width": 512,
+    "height": 512,
+    "bytes": 2825
+  }
+]

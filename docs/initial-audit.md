@@ -3,6 +3,7 @@
 Date: 2026-09-15. Target: Windows 10/11 x64.
 
 ## Observed environment
+
 - OS: Microsoft Windows 10.0.26200 (Windows 11 kernel build), x64.
 - Node.js: 24.19.0. pnpm: 11.19.0. Git available.
 - Visual Studio Community 2026 18.3.2 is installed; C++ workload/SDK validation pending.
@@ -12,9 +13,11 @@ Date: 2026-09-15. Target: Windows 10/11 x64.
 - Restricted network rejects npm without approved escalation; approved npm registry reads succeed.
 
 ## Verified stable releases
+
 Official npm registry dist-tag queries returned React 19.3.0, Three.js 0.186.0, Vite 8.3.0, TypeScript 7.0.2, Vitest 5.0.0, @tauri-apps/cli 2.11.4, @tauri-apps/api 2.11.1. Exact dependency declarations and pnpm-lock.yaml will freeze resolution at bootstrap. Cargo.lock will freeze Rust dependencies.
 
 ## Official references consulted
+
 - https://v2.tauri.app/start/prerequisites/ — Windows MSVC, WebView2, Rust requirements.
 - https://v2.tauri.app/release/ — Tauri core 2.11.5, build 2.6.3, CLI 2.11.4.
 - https://v2.tauri.app/develop/tests/webdriver/ — recommended WebdriverIO Tauri service; native built-app testing is distinct from browser frontend testing.
@@ -24,9 +27,11 @@ Official npm registry dist-tag queries returned React 19.3.0, Three.js 0.186.0, 
 - https://www.typescriptlang.org/ — registry version must take precedence over older indexed release notes.
 
 ## Initial gate
+
 NOT RUN. No PASS until Tauri binary launches, volume geometry/camera/lighting work, lint/typecheck/unit and relevant smoke tests pass, and QA reviews evidence. A browser build does not satisfy the native vertical slice.
 
 ## Release verification constraints
+
 A fresh VM or second clean Windows machine has not been identified. Installation/uninstallation on this host cannot be described as clean-machine verification. Record evidence accurately and do not release with unmet blocking gates.
 
 **Scope update from user, 2026-09-15:** clean-machine verification is waived for this delivery ("Пока обойдемся без этого"). Installation, launch and uninstall checks on the current Windows host remain required. The final checklist must record this as a user-approved exclusion, not a passing clean-machine test.

@@ -1,13 +1,54 @@
 # MatVision Studio
 
-Native Windows desktop studio for viewing printed desk mats in real-time WebGL2.
-Tauri 2 + React + TypeScript + Three.js. All catalogue dimensions are physical millimetres,
-converted to SI metres in the scene.
+Приложение Windows для просмотра принта на объёмном коврике в реальном времени.
+Tauri 2, React, strict TypeScript и Three.js/WebGL2. Геометрия задана в метрах SI:
+Desk Mat **900 × 400 мм** и Mouse Pad **400 × 450 мм**.
 
-## Development
+## Использование
 
-Prerequisites: Node.js 24 LTS, pnpm 11.19.0, stable Rust MSVC, Visual Studio C++ Build Tools
-and Windows SDK, Microsoft WebView2. See the [official Tauri setup](https://v2.tauri.app/start/prerequisites/).
+1. Установите приложение через Windows EXE installer и запустите MatVision Studio.
+2. Перетащите PNG, JPEG или WebP из проводника в центральную сцену. Можно также нажать
+   «Открыть изображение». По умолчанию Cover заполняет коврик с сохранением пропорций.
+3. Выберите продукт. Contain показывает весь рисунок; Stretch явно растягивает его
+   по размеру поверхности. Масштаб, сдвиг и поворот доступны в панели Print Layout.
+4. Включите Edit Print, чтобы двигать изображение прямо по поверхности. Камера,
+   пять ракурсов, Turntable и линейка помогают рассмотреть размер, ткань и толщину.
+5. Сохраните проект через Ctrl+S. Файл `.matvision` содержит исходное изображение,
+   размещение, материал, свет, камеру и настройки просмотра; исходный файл можно
+   переместить после сохранения проекта.
+6. Экспортируйте PNG через Ctrl+E: Screen сохраняет размер viewport, High Resolution
+   рендерит изображение с длинной стороной 3840 px. Панели интерфейса в PNG не попадают.
+
+Три тканевых материала, четыре варианта освещения, регулируемая толщина и шероховатость,
+резиновая нижняя сторона и Standard Cut / Stitched Edge работают в настоящей 3D-сцене.
+Исходные пиксели используются для оценки effective DPI; ограниченный GPU-preview не
+уменьшает эту оценку. Низкое разрешение сопровождается пояснением, но не запрещает импорт.
+
+## Управление
+
+| Действие                             | Мышь / клавиши                 |
+| ------------------------------------ | ------------------------------ |
+| Вращение камеры                      | Левая кнопка + перетаскивание  |
+| Сдвиг камеры                         | Правая кнопка + перетаскивание |
+| Приближение                          | Колесо                         |
+| Перемещение принта                   | Edit Print + левая кнопка      |
+| Масштаб принта                       | Ctrl + колесо в Edit Print     |
+| Открыть изображение / проект         | Ctrl+O / Ctrl+Shift+O          |
+| Сохранить проект / экспорт PNG       | Ctrl+S / Ctrl+E                |
+| Сброс камеры / сверху / перспектива  | R / 1 / 2                      |
+| Edit Print / скрыть панели / справка | E / H / F1                     |
+
+Tab перемещает клавиатурный фокус между элементами. Escape закрывает справку и настройки.
+
+## Сборка разработчиком
+
+Требования: Windows 10/11 x64, Node.js 24 LTS, pnpm 11.19.0, Rust с MSVC target,
+Visual Studio C++ Build Tools, Windows SDK и Microsoft Edge WebView2 Runtime.
+[Официальная подготовка Tauri](https://v2.tauri.app/start/prerequisites/) описывает установку
+системных компонентов. На машине пользователя приложения Node.js и Rust не нужны.
+Установщик загружает WebView2, если runtime отсутствует; для этого нужен интернет.
+
+Из каталога репозитория выполните последовательно:
 
 ```powershell
 pnpm install --frozen-lockfile
@@ -17,26 +58,38 @@ pnpm test
 pnpm tauri dev
 ```
 
-On the development host used for this repository, a workspace-local Rust/MSVC/SDK toolchain
-is provisioned outside the repository. Run `. ./scripts/native-env.ps1` before the commands
-above to use it. Other machines should use their normal installed prerequisites.
+Для production-сборки:
 
 ```powershell
 pnpm tauri build
 ```
 
-Windows installer output is under `src-tauri/target/release/bundle/nsis/`.
-See `TESTING.md`, `ARCHITECTURE.md`, `docs/initial-audit.md`, and the release checklist
-for verification evidence. A successful frontend build alone is not a desktop release.
+EXE: `src-tauri/target/release/matvision-studio.exe`.
+Windows installer: `src-tauri/target/release/bundle/nsis/`.
+Все runtime-ресурсы сцены локальные; сервер Vite для установленного приложения не нужен.
 
-## Interaction
+На исходном development host использован проверенный локальный Rust/MSVC/SDK toolchain
+вне репозитория. Здесь перед командами можно выполнить `. ./scripts/native-env.ps1`.
+Этот необязательный helper не входит в зависимости приложения и не заменяет обычные
+системные prerequisites на другом компьютере. Подробности: [native toolchain](docs/native-toolchain.md).
 
-Drag to orbit. Wheel to zoom. Right-drag to pan. Camera buttons provide standard views.
-The product catalogue contains Desk Mat 900 × 400 mm and Mouse Pad 400 × 450 mm.
+## Проверки и документация
 
-## Colour
+- [Архитектура](ARCHITECTURE.md), [разработка](DEVELOPMENT.md), [тестирование](TESTING.md).
+- [Rendering](RENDERING.md), [цвет](COLOR_MANAGEMENT.md), [производительность](PERFORMANCE.md).
+- [Визуальный review](docs/visual-review.md), [release checklist](RELEASE_CHECKLIST.md).
+- Оригинальные synthetic fixtures: `tests/fixtures/`; golden scenes: `tests/browser/`.
 
-Studio Preview displays scene lighting and material appearance. It is not an ICC soft proof.
-Exact print matching needs a measured printer/ink/fabric profile and a calibrated monitor.
+Тесты включают CPU-математику, Rust file I/O, browser integration, visual regression,
+настоящий Tauri/WebdriverIO workflow и проверку освобождения WebGL-ресурсов.
+Конкретные результаты и пределы проверки приведены в release checklist.
 
-No external telemetry. Images are processed locally.
+## Цвет и локальные данные
+
+Studio Preview учитывает свет и материал. Print Proof требует измеренного ICC-профиля
+принтера, чернил и ткани и пока недоступен. Ручной профиль материала хранит компенсацию
+яркости, насыщенности, чёрного, оттенка поверхности, контраста и шероховатости вместе
+с проектом. Его значения по умолчанию не являются измеренной калибровкой.
+
+Изображения обрабатываются локально. Внешней telemetry нет. Приложение не исполняет
+импортированные файлы; первый релиз принимает PNG/JPEG/WebP и отклоняет SVG.
