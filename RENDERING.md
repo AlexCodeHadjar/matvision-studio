@@ -32,7 +32,9 @@ Each deterministic 128 × 128 tile models crossed yarns with alternating over/un
 
 All top presets have metalness, clearcoat and transmission equal to zero. A modest sheen and reduced dielectric specular intensity avoid a polished coating response. Roughness is `clamp(liveRoughness × profileRoughness/0.88 × presetRoughness/0.88, 0.05, 1)`, then multiplied by the subtle map. With neutral profile and Fine Weave, the live value is unchanged. These are starting material approximations, not measured BRDF data for a named supplier.
 
-`createRubberMaterial(product)` returns a separate dark, rough, nonmetallic backing material with very weak procedural relief. `createStitchedMaterial(perimeterM)` returns a binding material with repeating diagonal yarn relief and restrained sheen. The stitched mesh must supply cumulative perimeter U and across-binding V. The repeat count closes at the seam and gives approximately 1.8 mm stitch pitch. A normal pattern needs visible binding geometry to communicate the physical edge; the helper alone does not establish stitched-edge acceptance.
+`createRubberMaterial(product)` returns a dark, rough, nonmetallic backing with interleaved short diagonal ribs. A deterministic 512 × 512 height tile produces separate albedo, roughness and normal maps. Repeat derives from a 16 mm physical tile; small variations in rib direction, size and surface grain break up the pattern.
+
+In 0.1.1, `createStitchedGeometry` produces a padded binding that wraps the top, side and bottom plus shared yarn geometry, instance transforms and subtle instance colors. Overlock loops follow the rounded perimeter at approximately 0.62 mm pitch; a smaller interlocking chain joins their inner ends. `createStitchedMaterial` owns separate binding and thread materials/maps. Projected stitch size controls detail visibility: instanced yarn is shown above 0.85 screen pixels per stitch, while the continuous binding and its normal pattern remain visible at a distance. Replaced instance buffers, geometries and owned maps are disposed.
 
 ## HDR studio lighting
 
@@ -46,6 +48,8 @@ All top presets have metalness, clearcoat and transmission equal to zero. A mode
 | Desk Setup     | Slightly cool overhead light, darker neutral floor, restrained room contrast.         |
 
 `getEnvironmentSettings(preset)` returns display name, background/floor colors, key color/intensity/position, environment intensity and exposure for root scene integration. The factory accepts power-of-two panorama widths from 128 through 2048. The PMREM result is a CubeUV atlas; its GPU allocation differs from the source panorama dimensions. Quality switching must dispose the previous target after successfully creating its replacement.
+
+Version 0.1.1 reduces key and environment intensity, exposure and cloth specular/sheen response. Neutral Studio uses key intensity 1.6, environment intensity 0.48 and exposure 0.86. A lower fill light is enabled only when the actual camera is below the mat, revealing the rubber relief. The close-up camera targets a product corner to show fabric and stitching together.
 
 The studio uses a real receiving floor plane and a directional shadow map. `PCFShadowMap` is the supported r186 path; `PCFSoftShadowMap` was removed. The light's radius softens PCF sampling in this version. Small metre-scale shadow bias settings should be judged with both thin and thick products and a low-angle reference view. Do not substitute a painted shadow.
 
@@ -64,7 +68,7 @@ A `Scene.background` Color becomes the renderer clear color and bypasses tone ma
 
 ## Verification status
 
-The material/environment CPU suite passes physical-repeat, data-normal, neutral-profile, roughness, ownership/disposal, HDR range, hemisphere and preset-tint invariants. TypeScript and browser shader compilation must be checked again after full scene integration. PBR visual approval requires actual neutral reference captures with gray patches, saturated colors, black and white prints, low-angle fabric detail, underside and stitched binding. See `docs/visual-review.md` for QA decisions. CPU test success alone does not approve realism.
+The historical material/environment CPU results belong to 0.1.0. For 0.1.1, production TypeScript/Vite and Windows builds completed, and actual scene renders were inspected during appearance work. Automated suites, golden comparisons and performance measurements were not rerun, following the user's instruction to skip remaining checks. See `docs/visual-review.md` for scope and captures; no formal release PASS is claimed for this revision.
 
 ## Primary API references
 

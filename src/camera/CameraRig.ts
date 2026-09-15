@@ -68,7 +68,13 @@ export class CameraRig {
       from,
       to,
       this.controls.target,
-      new Vector3(0, thicknessMm / 2000, 0),
+      preset === 'close-up'
+        ? new Vector3(
+            product.widthMm / 2000 - 0.035,
+            thicknessMm / 2000,
+            product.heightMm / 2000 - 0.025,
+          )
+        : new Vector3(0, thicknessMm / 2000, 0),
       product,
       performance.now(),
     );

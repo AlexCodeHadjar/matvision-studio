@@ -1,5 +1,11 @@
 # MatVision Studio — release checklist
 
+## 0.1.1 appearance update — 2026-09-15
+
+Overlock geometry, rubber backing and studio lighting were revised from the user's reference images. Production TypeScript/Vite and Windows release builds completed. The instruction to skip remaining checks continues to apply: regression suites, golden comparisons, benchmarks and clean-machine installation tests were not rerun. Historical 0.1.0 results below do not establish acceptance for 0.1.1. See `CHANGELOG.md` and `docs/visual-review.md` for the change scope.
+
+Version 0.1.1 was installed over 0.1.0 for the current user; the installer returned exit code 0 and the uninstall registry reports 0.1.1. The existing desktop shortcut was updated and the installed application was launched. See [installation record](docs/release/desktop-installation-0.1.1.json) and [artifact hashes](docs/release/artifact-manifest-0.1.1.json).
+
 ## User-directed delivery — 2026-09-15
 
 The user explicitly requested: «пропусти все проверки и пока просто доведи до финального продукта и дай мне его запускать с рабочего стола».

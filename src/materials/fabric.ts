@@ -23,9 +23,9 @@ export function createFabricMaterial(product: ProductDefinition, state: ProjectS
     clearcoat: 0,
     transmission: 0,
     ior: 1.45,
-    specularIntensity: 0.45,
+    specularIntensity: 0.28,
     sheen: FABRIC_PRESETS[preset].sheen,
-    sheenColor: '#d2d2d2',
+    sheenColor: '#969d96',
     sheenRoughness: 0.95,
   });
   material.name = 'MatVision printed cloth';

@@ -7,6 +7,7 @@ import { FABRIC_PRESETS, generateFabricMaps } from './microtexture';
 import { compensateLinearColor } from './profile';
 import { createRubberMaterial } from './rubber';
 import { createStitchedMaterial } from './stitched';
+import { STITCH_PITCH_M } from '../geometry/stitch';
 
 describe('physical fabric and resource ownership', () => {
   it('keeps weave scale physical and independent from the artwork layout', () => {
@@ -116,8 +117,8 @@ it('uses separate nonmetallic backing and stitch materials with bounded owned ma
   expect(rubber.material.roughness).toBeGreaterThan(0.9);
   expect(rubber.material.metalness).toBe(0);
   expect(stitch.material.metalness).toBe(0);
-  expect(stitch.material.normalMap!.repeat.x).toBe(Math.round(2.6 / 0.0018));
-  expect(rubber.ownedTextureBytes + stitch.ownedTextureBytes).toBeLessThan(300_000);
+  expect(stitch.material.normalMap!.repeat.x).toBe(Math.round(2.6 / STITCH_PITCH_M));
+  expect(rubber.ownedTextureBytes + stitch.ownedTextureBytes).toBeLessThan(5_000_000);
   rubber.dispose();
   stitch.dispose();
   expect(rubber.ownedTextureBytes + stitch.ownedTextureBytes).toBe(0);

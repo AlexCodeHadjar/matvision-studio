@@ -1,5 +1,9 @@
 # Performance
 
+## Version scope
+
+All measured results below belong to **0.1.0**. Version **0.1.1** changes stitching geometry, rubber maps and lighting; its performance matrix was not rerun at the user's request. Close-up yarn uses shared instanced geometry and is hidden when the projected stitch size is at most 0.85 pixels. This implementation detail is not a measured performance guarantee.
+
 **Delivery update, 2026-09-15:** the user stopped all remaining verification and requested
 installation for immediate desktop use. The unfinished benchmark matrix and final reruns
 are skipped at user request. Retained partial measurements must not be read as a completed

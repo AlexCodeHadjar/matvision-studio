@@ -1,5 +1,11 @@
 # Visual review
 
+## 2026-09-15 — 0.1.1 appearance revision
+
+The root engineer inspected actual StudioScene exports using hardware D3D11 Chromium during the requested appearance changes: [overlock close-up](appearance-0.1.1/overlock-close.png), [rubber close-up](appearance-0.1.1/rubber-close.png), [underside](appearance-0.1.1/rubber-overview.png), and [studio perspective](appearance-0.1.1/studio.png). The edge now wraps around the body with dense raised yarn and a smaller interlocking chain. The dark backing shows interleaved diagonal relief. Reduced studio and cloth reflection intensity preserves deeper print colors.
+
+These are informal appearance captures of the procedural materials, not physical scans or a formal golden comparison. Production frontend/native builds completed. Full QA, automated suites and benchmarks were skipped at the user's explicit request; earlier PASS entries describe earlier revisions only.
+
 ## 2026-09-15 — First vertical slice, initial capture: FAIL
 
 Environment: Playwright 1.63.0 / Chromium 153.0.8010.12, SwiftShader WebGL2, viewport 1440 × 1000, DPR 1. Default Desk Mat 900 × 400 × 3 mm, perspective camera and neutral studio. The screenshot was inspected directly by QA.

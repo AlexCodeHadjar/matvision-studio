@@ -7,6 +7,8 @@ import {
   Float32BufferAttribute,
   Fog,
   Group,
+  InstancedBufferAttribute,
+  InstancedMesh,
   LineBasicMaterial,
   LineSegments,
   Mesh,
@@ -35,7 +37,7 @@ import type {
 } from '../contracts';
 import { getProduct } from '../products';
 import { createMatGeometry } from '../geometry/mat';
-import { createStitchedGeometry } from '../geometry/stitch';
+import { createStitchedGeometry, STITCH_PITCH_M } from '../geometry/stitch';
 import { createFabricMaterial, createInitialFabric } from '../materials/fabric';
 import { createRubberMaterial } from '../materials/rubber';
 import { createStitchedMaterial } from '../materials/stitched';
@@ -73,6 +75,8 @@ export class StudioScene implements SceneController {
   });
   private readonly background = new Mesh(new BoxGeometry(24, 24, 24), this.backgroundMaterial);
   private readonly key = new DirectionalLight();
+  private readonly undersideLight = new DirectionalLight('#f0f2ed', 0);
+  private stitchThreads: InstancedMesh | null = null;
   private readonly references = new Group();
   private readonly resizeObserver: ResizeObserver;
   private readonly raycaster = new Raycaster();
@@ -152,6 +156,8 @@ export class StudioScene implements SceneController {
     this.key.shadow.bias = -0.00001;
     this.key.shadow.radius = 3;
     this.scene.add(this.key);
+    this.undersideLight.position.set(-0.7, -0.9, 0.6);
+    this.scene.add(this.undersideLight);
     this.environment = createStudioEnvironment(
       this.renderer,
       state.environment,
@@ -293,10 +299,13 @@ export class StudioScene implements SceneController {
   }
   private rebuildMat() {
     for (const child of [...this.mat.children]) {
+      if (child instanceof InstancedMesh) child.dispose();
       if (child instanceof Mesh) child.geometry.dispose();
       this.mat.remove(child);
     }
     const product = getProduct(this.state.productId);
+    this.stitchThreads = null;
+    this.floor.position.y = this.state.edgePreset === 'stitched' ? -0.00028 : -0.00002;
     const { body, top } = createMatGeometry(product, this.state.thicknessMm);
     const underside = new Mesh(body, this.rubber.material);
     underside.castShadow = true;
@@ -307,11 +316,25 @@ export class StudioScene implements SceneController {
     this.mat.add(underside, this.surface);
     this.bounds = body.boundingBox!.getSize(new Vector3());
     if (this.state.edgePreset === 'stitched') {
-      const { geometry, perimeterM } = createStitchedGeometry(product, this.state.thicknessMm);
+      const { geometry, threadGeometry, matrices, colors, stitchCount, perimeterM } =
+        createStitchedGeometry(product, this.state.thicknessMm);
       this.stitches.update(perimeterM);
       const binding = new Mesh(geometry, this.stitches.material);
       binding.castShadow = true;
       this.mat.add(binding);
+      this.stitchThreads = new InstancedMesh(
+        threadGeometry,
+        this.stitches.threadMaterial,
+        stitchCount,
+      );
+      this.stitchThreads.instanceMatrix.array.set(matrices);
+      this.stitchThreads.instanceMatrix.needsUpdate = true;
+      this.stitchThreads.instanceColor = new InstancedBufferAttribute(colors, 3);
+      this.stitchThreads.name = 'Individual overlock loops and interlocking needle chain';
+      // The padded binding casts the edge shadow. Submillimetre strands are below
+      // shadow-map resolution and use geometry/filament normals for their own shading.
+      this.stitchThreads.frustumCulled = false;
+      this.mat.add(this.stitchThreads);
     }
     this.host.dataset.productId = product.id;
     this.rebuildReferences();
@@ -474,6 +497,14 @@ export class StudioScene implements SceneController {
     // camera hemisphere so the floor never obscures a cancelled underside view.
     this.floor.visible = this.camera.position.y >= this.state.thicknessMm / 2000;
     this.references.visible = this.state.referenceMode && this.floor.visible;
+    this.undersideLight.intensity = this.floor.visible ? 0 : 2.4;
+    if (this.stitchThreads) {
+      const distance = Math.max(0.01, this.camera.position.distanceTo(this.controls.target));
+      const pixelsPerStitch =
+        (this.renderer.domElement.height * STITCH_PITCH_M) /
+        (2 * Math.tan((this.camera.fov * Math.PI) / 360) * distance);
+      this.stitchThreads.visible = pixelsPerStitch > 0.85;
+    }
     this.background.position.copy(this.camera.position);
     this.renderer.render(this.scene, this.camera);
     this.frameCount++;
@@ -585,6 +616,7 @@ export class StudioScene implements SceneController {
     canvas.removeEventListener('wheel', this.onWheel, true);
     this.clearReferences();
     this.scene.traverse((object) => {
+      if (object instanceof InstancedMesh) object.dispose();
       if (object instanceof Mesh) object.geometry.dispose();
     });
     this.printLayer.dispose();
