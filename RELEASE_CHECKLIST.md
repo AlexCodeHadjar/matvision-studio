@@ -4,6 +4,8 @@
 
 Adds roll/unroll playback, pause and position slider in the 3D viewport. TypeScript/Vite compilation completed. Informal real-scene captures showed flat, partial and fully rolled poses; actual UI buttons reached 100% and paused during unrolling. Full regression, benchmark, clean-machine and golden comparison suites remain skipped at the user's request. Historical PASS entries below do not approve this revision.
 
+The Windows release build completed. Installer exit code was 0, the install registry reports 0.1.3, the desktop shortcut was retained, and the installed application was launched. See [installation record](docs/release/desktop-installation-0.1.3.json) and [artifact hashes](docs/release/artifact-manifest-0.1.3.json).
+
 ## 0.1.2 surface selection — 2026-09-15
 
 Adds six placement surfaces, persistence with backward-compatible defaults and a small real directional shadow. Frontend TypeScript/Vite compilation completed. Full automated regression and performance checks remain skipped at the user's request. Earlier version results below are historical and do not establish acceptance for 0.1.2.
