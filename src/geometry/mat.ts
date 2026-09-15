@@ -1,9 +1,77 @@
-import { BufferGeometry, Float32BufferAttribute, Shape } from 'three';
+import { BufferGeometry, Float32BufferAttribute, Shape, Vector2 } from 'three';
 import type { ProductDefinition } from '../contracts';
 import { mmToMetres, validateProduct } from '../products';
 
 // Three.js samples circular curves twice per segment: 12 steps per corner.
 const CURVE_SEGMENTS = 6;
+
+/** Bend around X: subdivide changes in Y/Z, keeping long straight X edges cheap. */
+export function subdivideBendPerimeter(points: Vector2[]): Vector2[] {
+  return points.flatMap((point, index) => {
+    const next = points[(index + 1) % points.length]!;
+    const steps =
+      Math.abs(next.x - point.x) < 1e-12
+        ? Math.max(1, Math.ceil(Math.abs(next.y - point.y) / 0.0015))
+        : 1;
+    return Array.from({ length: steps }, (_, step) => point.clone().lerp(next, step / steps));
+  });
+}
+
+/** Strip tessellation follows the exact bevel outline and retains physical print UVs. */
+function appendCap(
+  outline: { x: number; z: number }[],
+  height: number,
+  up: boolean,
+  product: ProductDefinition,
+  positions: number[],
+  normals: number[],
+  uvs: number[],
+  indices: number[],
+) {
+  const rows = outline
+    .map((p) => p.z)
+    .sort((a, b) => a - b)
+    .filter((z, i, sorted) => i === 0 || z - sorted[i - 1]! > 1e-9);
+  const columns = 1,
+    start = positions.length / 3;
+  const w = product.widthMm / 1000,
+    h = product.heightMm / 1000;
+  for (let row = 0; row < rows.length; row++) {
+    const z = rows[row]!;
+    let left = Infinity,
+      right = -Infinity;
+    for (let i = 0; i < outline.length; i++) {
+      const a = outline[i]!,
+        b = outline[(i + 1) % outline.length]!;
+      if (z < Math.min(a.z, b.z) - 1e-9 || z > Math.max(a.z, b.z) + 1e-9) continue;
+      if (Math.abs(a.z - b.z) < 1e-9) {
+        left = Math.min(left, a.x, b.x);
+        right = Math.max(right, a.x, b.x);
+      } else {
+        const f = Math.max(0, Math.min(1, (z - a.z) / (b.z - a.z)));
+        const x = a.x + (b.x - a.x) * f;
+        left = Math.min(left, x);
+        right = Math.max(right, x);
+      }
+    }
+    for (let column = 0; column <= columns; column++) {
+      const x = left + ((right - left) * column) / columns;
+      positions.push(x, height, z);
+      normals.push(0, up ? 1 : -1, 0);
+      const area = product.printableArea;
+      uvs.push(
+        up ? ((x + w / 2) * 1000 - area.xMm) / area.widthMm : (x + w / 2) / w,
+        up ? 1 - ((h / 2 + z) * 1000 - area.yMm) / area.heightMm : (-z + h / 2) / h,
+      );
+      if (row < rows.length - 1 && column < columns) {
+        const a = start + row * (columns + 1) + column,
+          b = a + columns + 1;
+        if (up) indices.push(a, b, a + 1, a + 1, b, b + 1);
+        else indices.push(a, a + 1, b, a + 1, b + 1, b);
+      }
+    }
+  }
+}
 
 export function roundedRectangle(width: number, height: number, radius: number): Shape {
   if (![width, height, radius].every(Number.isFinite) || width <= 0 || height <= 0 || radius < 0) {
@@ -43,10 +111,11 @@ export function createMatGeometry(product: ProductDefinition, thicknessMm: numbe
   // At most 0.25 mm; never expand catalogue extents or consume a tiny corner.
   const bevel = Math.min(0.00025, t / 5, r / 2);
   const sampled = roundedRectangle(w, h, r).extractPoints(CURVE_SEGMENTS).shape;
-  const perimeter = sampled.filter(
+  let perimeter = sampled.filter(
     (point, i) => i === 0 || point.distanceToSquared(sampled[i - 1]!) > 1e-20,
   );
   if (perimeter[0]!.distanceToSquared(perimeter[perimeter.length - 1]!) < 1e-20) perimeter.pop();
+  perimeter = subdivideBendPerimeter(perimeter);
   const count = perimeter.length;
   const positions: number[] = [];
   const normals: number[] = [];
@@ -105,21 +174,15 @@ export function createMatGeometry(product: ProductDefinition, thicknessMm: numbe
   }
   // Only one cap at each height: the fabric mesh closes the top. A second rubber
   // cap under an epsilon-offset print caused severe depth fighting at long views.
-  const bottomStart = positions.length / 3;
-  for (let i = 0; i < count; i++) {
-    const x = positions[i * 3]!;
-    const z = positions[i * 3 + 2]!;
-    positions.push(x, 0, z);
-    normals.push(0, -1, 0);
-    uvs.push((x + w / 2) / w, (-z + h / 2) / h);
-  }
-  const bottomCenter = positions.length / 3;
-  positions.push(0, 0, 0);
-  normals.push(0, -1, 0);
-  uvs.push(0.5, 0.5);
-  for (let i = 0; i < count; i++) {
-    indices.push(bottomCenter, bottomStart + ((i + 1) % count), bottomStart + i);
-  }
+  const bottomOutline = Array.from({ length: count }, (_, i) => ({
+    x: positions[i * 3]!,
+    z: positions[i * 3 + 2]!,
+  }));
+  const topOutline = Array.from({ length: count }, (_, i) => ({
+    x: positions[((rings.length - 1) * count + i) * 3]!,
+    z: positions[((rings.length - 1) * count + i) * 3 + 2]!,
+  }));
+  appendCap(bottomOutline, 0, false, product, positions, normals, uvs, indices);
   const body = new BufferGeometry();
   body.setAttribute('position', new Float32BufferAttribute(positions, 3));
   body.setAttribute('normal', new Float32BufferAttribute(normals, 3));
@@ -133,21 +196,7 @@ export function createMatGeometry(product: ProductDefinition, thicknessMm: numbe
   const topNormals: number[] = [];
   const topUvs: number[] = [];
   const topIndices: number[] = [];
-  const area = product.printableArea;
-  for (let i = 0; i <= count; i++) {
-    const source = ((rings.length - 1) * count + i) * 3;
-    const x = i === count ? 0 : positions[source]!;
-    const z = i === count ? 0 : positions[source + 2]!;
-    topPositions.push(x, t, z);
-    topNormals.push(0, 1, 0);
-    // Image top is negative scene Z. Bounds outside a custom printable rectangle
-    // intentionally extend past 0..1 for the print shader to clip.
-    topUvs.push(
-      ((x + w / 2) * 1000 - area.xMm) / area.widthMm,
-      1 - ((h / 2 + z) * 1000 - area.yMm) / area.heightMm,
-    );
-    if (i < count) topIndices.push(count, i, (i + 1) % count);
-  }
+  appendCap(topOutline, t, true, product, topPositions, topNormals, topUvs, topIndices);
   top.setAttribute('position', new Float32BufferAttribute(topPositions, 3));
   top.setAttribute('normal', new Float32BufferAttribute(topNormals, 3));
   top.setAttribute('uv', new Float32BufferAttribute(topUvs, 2));

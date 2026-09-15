@@ -36,6 +36,7 @@ import type {
 } from '../contracts';
 import { getProduct } from '../products';
 import { createMatGeometry } from '../geometry/mat';
+import { MatRollDeformer } from '../geometry/roll';
 import { createStitchedGeometry, STITCH_PITCH_M } from '../geometry/stitch';
 import { createFabricMaterial, createInitialFabric } from '../materials/fabric';
 import { createRubberMaterial } from '../materials/rubber';
@@ -77,6 +78,7 @@ export class StudioScene implements SceneController {
   private readonly key = new DirectionalLight();
   private readonly undersideLight = new DirectionalLight('#f0f2ed', 0);
   private stitchThreads: InstancedMesh | null = null;
+  private rollDeformer = new MatRollDeformer();
   private readonly references = new Group();
   private readonly resizeObserver: ResizeObserver;
   private readonly raycaster = new Raycaster();
@@ -209,7 +211,7 @@ export class StudioScene implements SceneController {
   private fitShadowToProduct() {
     const product = getProduct(this.state.productId);
     // Enclose every turntable angle, retaining resolution for a millimetre-scale shadow.
-    const extent = Math.hypot(product.widthMm, product.heightMm) / 2000 + 0.06;
+    const extent = Math.hypot(product.widthMm, product.heightMm) / 2000 + 0.12;
     const camera = this.key.shadow.camera;
     camera.left = camera.bottom = -extent;
     camera.right = camera.top = extent;
@@ -316,6 +318,7 @@ export class StudioScene implements SceneController {
     this.references.visible = this.state.referenceMode;
   }
   private rebuildMat() {
+    this.rollDeformer = new MatRollDeformer();
     for (const child of [...this.mat.children]) {
       if (child instanceof InstancedMesh) child.dispose();
       if (child instanceof Mesh) child.geometry.dispose();
@@ -333,6 +336,8 @@ export class StudioScene implements SceneController {
     this.surface.receiveShadow = true;
     this.mat.add(underside, this.surface);
     this.bounds = body.boundingBox!.getSize(new Vector3());
+    this.rollDeformer.add(body);
+    this.rollDeformer.add(top);
     if (this.state.edgePreset === 'stitched') {
       const { geometry, threadGeometry, matrices, colors, stitchCount, perimeterM } =
         createStitchedGeometry(product, this.state.thicknessMm);
@@ -340,6 +345,7 @@ export class StudioScene implements SceneController {
       const binding = new Mesh(geometry, this.stitches.material);
       binding.castShadow = true;
       this.mat.add(binding);
+      this.rollDeformer.add(geometry);
       this.stitchThreads = new InstancedMesh(
         threadGeometry,
         this.stitches.threadMaterial,
@@ -353,10 +359,21 @@ export class StudioScene implements SceneController {
       // shadow-map resolution and use geometry/filament normals for their own shading.
       this.stitchThreads.frustumCulled = false;
       this.mat.add(this.stitchThreads);
+      this.rollDeformer.addThreads(this.stitchThreads);
     }
+    this.applyRoll();
     this.host.dataset.productId = product.id;
     this.fitShadowToProduct();
     this.rebuildReferences();
+  }
+  private applyRoll() {
+    this.rollDeformer.apply(
+      getProduct(this.state.productId).heightMm / 1000,
+      this.state.thicknessMm / 1000,
+      this.state.rollAmount,
+      this.state.edgePreset === 'stitched',
+    );
+    this.printDrag = null;
   }
   update(state: ProjectState) {
     const before = this.state;
@@ -369,6 +386,7 @@ export class StudioScene implements SceneController {
     this.state = state;
     const product = getProduct(state.productId);
     if (rebuild) this.rebuildMat();
+    else if (state.rollAmount !== before.rollAmount) this.applyRoll();
     this.fabric.update(product, state);
     this.rubber.update(product);
     this.printLayer.update(this.sourceDimensions, product.printableArea, state.layout);
@@ -445,7 +463,15 @@ export class StudioScene implements SceneController {
       this.camera,
     );
     const hit = this.raycaster.intersectObject(this.surface, false)[0];
-    return hit ? this.mat.worldToLocal(hit.point.clone()) : null;
+    if (!hit?.uv) return null;
+    // Recover the undeformed print coordinates: dragging works on a curled surface too.
+    const product = getProduct(this.state.productId),
+      area = product.printableArea;
+    return new Vector3(
+      (area.xMm + hit.uv.x * area.widthMm - product.widthMm / 2) / 1000,
+      this.state.thicknessMm / 1000,
+      (area.yMm + (1 - hit.uv.y) * area.heightMm - product.heightMm / 2) / 1000,
+    );
   }
   private onPointerDown = (event: PointerEvent) => {
     if (!this.editPrint || event.button !== 0) return;
@@ -608,6 +634,7 @@ export class StudioScene implements SceneController {
       toneMapping: 'ACESFilmic',
       environmentId: this.state.environment,
       placementSurface: this.state.placementSurface,
+      rollAmount: this.state.rollAmount,
       fps: this.fps,
       frameTimeMs: this.fps > 0 ? 1000 / this.fps : 0,
       drawCalls: this.renderer.info.render.calls,
@@ -651,6 +678,7 @@ export class StudioScene implements SceneController {
     this.fabric.dispose();
     this.rubber.dispose();
     this.stitches.dispose();
+    this.rollDeformer = new MatRollDeformer();
     this.placementSurface.dispose();
     this.backgroundMaterial.dispose();
     this.environment.dispose();

@@ -1,5 +1,11 @@
 # Visual review
 
+## 2026-09-15 — 0.1.3 interactive roll
+
+The root engineer inspected real StudioScene captures at 0%, 30%, 65% and 100% roll, showing the attached print, backing outside the coil, rounded seam and changing cast shadow. An informal browser interaction used the actual “Скрутить” button (slider reached 100%), then “Раскрыть” and “Пауза” (an intermediate position remained visible). Representative captures: [partial roll](appearance-0.1.3/roll-0.65.png), [full roll](appearance-0.1.3/roll-1.png), and [controls](appearance-0.1.3/roll-controls.png).
+
+This is development appearance evidence, not a formal golden comparison or a performance result. Complete automated suites remain skipped at the user's request.
+
 ## 2026-09-15 — 0.1.2 placement surfaces and shadow
 
 Actual StudioScene exports were generated for the six surface choices during appearance work. The root engineer inspected neutral studio, oak and graphite renders: the surface color/wood grain is visible, the mat retains its print colors, and a narrow soft shadow appears at the contact edge. Representative captures: [oak](appearance-0.1.2/surface-oak.png) and [neutral studio](appearance-0.1.2/surface-studio.png).

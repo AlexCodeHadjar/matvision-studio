@@ -8,7 +8,7 @@ import {
 } from 'three';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
 import type { ProductDefinition } from '../contracts';
-import { roundedRectangle } from './mat';
+import { roundedRectangle, subdivideBendPerimeter } from './mat';
 import { validateProduct } from '../products';
 
 export const STITCH_PITCH_M = 0.00062;
@@ -94,8 +94,9 @@ export function createStitchedGeometry(product: ProductDefinition, thicknessMm: 
   const pitch = perimeterM / stitchCount;
   const core = bindingProfile(t, pitch, false);
   const raw = roundedRectangle(w, h, r).getPoints(8);
-  const points = raw.filter((p, i) => i === 0 || p.distanceToSquared(raw[i - 1]!) > 1e-18);
+  let points = raw.filter((p, i) => i === 0 || p.distanceToSquared(raw[i - 1]!) > 1e-18);
   if (points[0]!.distanceToSquared(points.at(-1)!) < 1e-18) points.pop();
+  points = subdivideBendPerimeter(points);
   const distances = [0];
   for (let i = 1; i <= points.length; i++) {
     distances.push(distances[i - 1]! + points[i % points.length]!.distanceTo(points[i - 1]!));

@@ -2,6 +2,8 @@
 
 ## Version scope
 
+Version **0.1.3** adds CPU deformation of reusable position/normal and yarn-instance buffers, with denser strips along the bend direction. It recomputes bounds when roll position changes. No sustained benchmark or updated performance acceptance was run; historical 0.1.0 numbers must not be applied to animation. The retained flat geometry/instance arrays add CPU storage, not new texture maps.
+
 Version **0.1.2** adds a reusable set of three 512 × 512 surface maps (approximately 4 MiB with mipmaps) and adjusts shadow framing/filtering. The performance matrix was not rerun at the user's request; earlier measurements do not apply to this update.
 
 All measured results below belong to **0.1.0**. Version **0.1.1** changes stitching geometry, rubber maps and lighting; its performance matrix was not rerun at the user's request. Close-up yarn uses shared instanced geometry and is hidden when the projected stitch size is at most 0.85 pixels. This implementation detail is not a measured performance guarantee.

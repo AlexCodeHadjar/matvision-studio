@@ -95,6 +95,8 @@ export interface ProjectState {
   roughness: number;
   environment: EnvironmentPreset;
   placementSurface: PlacementSurface;
+  /** 0 = flat; 1 = fully rolled. Animation playback is transient UI state. */
+  rollAmount: number;
   layout: PrintLayout;
   source: PrintSource | null;
   camera: CameraState;

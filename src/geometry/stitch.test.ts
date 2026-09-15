@@ -18,7 +18,7 @@ describe('physical overlock binding', () => {
       expect(perimeterM / stitchCount).toBeCloseTo(STITCH_PITCH_M, 6);
       expect(matrices.length).toBe(stitchCount * 16);
       expect(colors.length).toBe(stitchCount * 3);
-      expect(geometry.getIndex()!.count / 3).toBeLessThan(10_000);
+      expect(geometry.getIndex()!.count / 3).toBeLessThan(40_000);
       expect(threadGeometry.getIndex()!.count / 3).toBeLessThan(400);
       for (const mesh of [geometry, threadGeometry]) {
         const positions = mesh.getAttribute('position'),

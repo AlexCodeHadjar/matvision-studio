@@ -25,6 +25,7 @@ import {
 } from '../native';
 import type { StudioScene } from '../scene/StudioScene';
 import { Viewport } from './Viewport';
+import { RollControls } from './RollControls';
 import { Help, MaterialControls, PrintControls, Settings, Slider } from './Controls';
 import './styles.css';
 
@@ -488,9 +489,18 @@ export function App() {
               Линейка · реальный масштаб
             </label>
           </section>
+          <RollControls
+            value={state.rollAmount}
+            onChange={(rollAmount) => {
+              setEditPrint(false);
+              patch({ rollAmount });
+            }}
+            disabled={!!busy}
+            resetKey={state.productId}
+          />
           <section className="control-section">
             <h2>
-              <span>04</span> Камера
+              <span>05</span> Камера
             </h2>
             <div className="camera-buttons">
               {cameras.map(([id, label]) => (
@@ -522,7 +532,7 @@ export function App() {
           </section>
           <section className="control-section">
             <h2>
-              <span>05</span> Экспорт
+              <span>06</span> Экспорт
             </h2>
             <label className="field-label">
               Разрешение PNG

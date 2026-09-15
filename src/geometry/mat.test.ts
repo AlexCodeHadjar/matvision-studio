@@ -68,7 +68,8 @@ describe('physical mat geometry', () => {
         const h = product.heightMm / 1000;
         const r = product.cornerRadiusMm / 1000;
         assertClosedVolume([body, top], ((w * h - (4 - Math.PI) * r * r) * thickness) / 1000);
-        expect(triangles(body).length + triangles(top).length).toBeLessThan(700);
+        // Longitudinal strips support smooth rolling while X remains linear.
+        expect(triangles(body).length + triangles(top).length).toBeLessThan(9_000);
         body.dispose();
         top.dispose();
       }

@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.3 — 2026-09-15
+
+- Added interactive “Скрутить”, “Раскрыть”, “Пауза” controls and a 0–100% roll-position slider. A full transition takes 3.5 seconds with smooth acceleration/deceleration. Camera orbit remains available.
+- Replaced fan caps with longitudinal strips and subdivided binding edges for continuous bending. An arc-length spiral accounts for mat thickness and seam clearance; print UVs stay attached to the surface, backing and seam bend together, and real shadows follow the geometry.
+- Roll position is saved in projects; older projects open flat. Playback stops for file operations and product changes. Print dragging uses the undeformed UV position, including on a paused curl.
+- TypeScript/Vite compilation and informal browser appearance/button checks completed. Full regression and benchmark suites remain skipped at the user's request. No video-export feature was added.
+
 ## 0.1.2 — 2026-09-15
 
 - Added “Поверхность под ковриком” in the material/light panel: neutral studio, white desk, matte graphite, light oak, dark walnut and light concrete.

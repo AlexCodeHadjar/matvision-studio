@@ -1,5 +1,9 @@
 # MatVision Studio — release checklist
 
+## 0.1.3 interactive roll — 2026-09-15
+
+Adds roll/unroll playback, pause and position slider in the 3D viewport. TypeScript/Vite compilation completed. Informal real-scene captures showed flat, partial and fully rolled poses; actual UI buttons reached 100% and paused during unrolling. Full regression, benchmark, clean-machine and golden comparison suites remain skipped at the user's request. Historical PASS entries below do not approve this revision.
+
 ## 0.1.2 surface selection — 2026-09-15
 
 Adds six placement surfaces, persistence with backward-compatible defaults and a small real directional shadow. Frontend TypeScript/Vite compilation completed. Full automated regression and performance checks remain skipped at the user's request. Earlier version results below are historical and do not establish acceptance for 0.1.2.

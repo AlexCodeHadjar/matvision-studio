@@ -340,6 +340,27 @@ button:hover {
   }
 }
 /* Studio controls */
+.roll-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr 0.8fr;
+  gap: 5px;
+}
+.roll-buttons button {
+  padding: 9px 5px;
+  font-size: 11px;
+}
+.roll-position {
+  border: 0;
+  padding: 0;
+  margin: 13px 0 0;
+  min-width: 0;
+}
+.roll-endpoints {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #7b8874;
+}
 .toolbar-actions {
   display: flex;
   align-items: center;

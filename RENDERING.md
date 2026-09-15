@@ -4,6 +4,14 @@ MatVision Studio renders a physical mat with Three.js 0.186.0 and WebGL2 inside 
 
 ## Physical model
 
+### Interactive rolling (0.1.3)
+
+Top and bottom caps use longitudinal strips matching the bevel outline; straight perimeter segments in the bend direction have at most 1.5 mm spacing. X remains linear, avoiding unnecessary subdivision across the width. `MatRollDeformer` retains flat positions/normals and yarn instance transforms, then updates existing GPU buffers from those rest values. Returning to zero therefore does not accumulate geometric drift. Updated CPU geometry is also used for raycasting and shadow rendering.
+
+The roll is an inward Archimedean spiral parameterized by neutral-surface arc length. Radial pitch includes thickness, overlock clearance and an air gap. The starting tangent is aligned with the remaining flat section; the outer radius increases with rolled length. Body and binding positions/normals follow the same mapping. Yarn instances follow the local tangent frame (individual submillimetre yarn cross-sections remain rigid). This is a controlled deformation, not a cloth or collision simulation.
+
+Print UVs remain unchanged. Picking a curved print converts the hit UV back into flat physical coordinates for layout editing. Bounds are refreshed after deformation. The UI provides smooth playback, pause and manual scrubbing; project `rollAmount` defaults to zero for old files, while playback itself is transient.
+
 The body mesh supplies rounded sides and the rubber underside. Its requested thickness is real geometry. A single upper cap at exactly the requested thickness closes the volume and carries the print material. Keep this cap separate from the rubber body; overlapping coplanar caps previously caused a rejected visual regression. A shallow bevel softens the edge without expanding the catalogue footprint.
 
 The upper UV domain is the product's printable rectangle. Image top corresponds to negative scene Z. A custom printable area can give surface coordinates outside 0–1; the print layer clips that region to unprinted cloth. Artwork transforms are inverse transforms evaluated in the fragment shader, so scale, translation and rotation do not rebuild geometry or bake lighting into a texture. The normal map has its own texture transform and never changes image coordinates.

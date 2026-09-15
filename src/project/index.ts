@@ -41,6 +41,7 @@ export function createDefaultProject(productId = 'deskmat-900x400'): ProjectStat
     roughness: 0.88,
     environment: 'neutral-studio',
     placementSurface: 'studio',
+    rollAmount: 0,
     layout: createDefaultLayout(),
     source: null,
     camera: {
@@ -196,6 +197,7 @@ export function validateProjectState(value: unknown): ProjectState {
       PLACEMENT_SURFACES,
       'placement surface',
     ),
+    rollAmount: input.rollAmount === undefined ? 0 : number(input.rollAmount, 'roll amount', 0, 1),
     layout: layout(input.layout),
     source: source(input.source),
     camera: camera(input.camera),
