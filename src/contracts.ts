@@ -124,6 +124,8 @@ export interface SceneController {
   update(state: ProjectState): void;
   /** Latest request wins; decode failure keeps the previously displayed source intact. */
   setPrintSource(source: PrintSource | null): Promise<PreviewResolution | null>;
+  /** Invalidate in-flight imports before validating a newer file; preserve committed artwork. */
+  cancelPendingPrint(): void;
   setCameraPreset(preset: CameraPreset): void;
   getCameraState(): CameraState;
   exportPng(options: ExportOptions): Promise<Blob>;
