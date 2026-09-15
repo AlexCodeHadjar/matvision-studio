@@ -1,34 +1,74 @@
 # Rendering
 
-## Coordinate system and geometry
+MatVision Studio renders a physical mat with Three.js 0.186.0 and WebGL2 inside the Tauri WebView. Product dimensions cross from millimetres to metres at the geometry boundary. React owns serializable state; `StudioScene` owns GPU resources and the render loop.
 
-Scene units are metres. X spans product width, Y is up, Z spans product height.
-The floor is Y=0. Catalogue thickness is passed into geometry generation, never hardcoded
-as a hidden geometry constant. Product scale is not changed to frame the camera.
+## Physical model
 
-The print uses its own top surface UVs. The rubber body does not inherit the user image.
-Rounded corners, bevel and thickness are actual geometry. No photograph, CSS perspective,
-shadow image or perspective-warped canvas represents the product.
+The body mesh supplies rounded sides and the rubber underside. Its requested thickness is real geometry. A single upper cap at exactly the requested thickness closes the volume and carries the print material. Keep this cap separate from the rubber body; overlapping coplanar caps previously caused a rejected visual regression. A shallow bevel softens the edge without expanding the catalogue footprint.
 
-## Lighting
+The upper UV domain is the product's printable rectangle. Image top corresponds to negative scene Z. A custom printable area can give surface coordinates outside 0–1; the print layer clips that region to unprinted cloth. Artwork transforms are inverse transforms evaluated in the fragment shader, so scale, translation and rotation do not rebuild geometry or bake lighting into a texture. The normal map has its own texture transform and never changes image coordinates.
 
-The neutral studio environment is an original procedural floating-point equirectangular
-HDR radiance map with three broad softboxes. It includes scene-linear radiance above 1.0.
-PMREM prefilters it for material roughness. This avoids external asset downloads or
-copyright-dependent environment assets in the installed product. A directional key adds
-contact shadows; the matte floor is a real receiving mesh.
+## Fabric
 
-Three.js r186 removed PCFSoftShadowMap; the renderer uses supported PCFShadowMap.
-No bloom, depth of field or cinematic postprocessing is applied.
+`createFabricMaterial(product, state)` in `src/materials/fabric.ts` returns:
 
-## Resource ownership
+| Member                     | Responsibility                                                                                  |
+| -------------------------- | ----------------------------------------------------------------------------------------------- |
+| `material`                 | `MeshPhysicalMaterial` for the sole upper cap.                                                  |
+| `update(product, state)`   | Physical texture repeat, preset settings and empirical profile uniforms.                        |
+| `setPrintTexture(texture)` | Assign externally owned artwork, or null; update shader defines only when map presence changes. |
+| `ownedTextureBytes`        | Estimated bytes for the two generated RGBA8 maps with mipmaps, excluding artwork.               |
+| `dispose()`                | Idempotently dispose generated maps and material; never dispose imported artwork.               |
 
-StudioScene owns renderer, OrbitControls, resize observer, animation frame and GPU resources.
-Disposal removes listeners, cancels frames, disposes geometry/material/texture/environment
-and shadow render targets. User image resources will follow the same ownership rule.
+The texture pipeline's `applyPrintLayer` must be installed after the fabric factory. It wraps the existing shader callback and program cache key. The fabric profile hook transforms the sampled base color at `color_fragment`; the print hook replaces `map_fragment`. Each wrapper preserves the previous hook. Profile or layout changes update existing uniforms and do not require shader recompilation.
 
-## Verification
+| Preset        | Base roughness | Normal scale | Tile size | Yarn pitch | Sheen |
+| ------------- | -------------: | -----------: | --------: | ---------: | ----: |
+| Smooth Cloth  |           0.84 |         0.13 |    2.4 mm |    0.30 mm |  0.12 |
+| Fine Weave    |           0.88 |         0.27 |    4.0 mm |    0.50 mm |  0.18 |
+| Gaming Fabric |           0.92 |         0.34 |    4.8 mm |    0.60 mm |  0.15 |
 
-CPU geometry tests inspect physical extents and UV coordinates. Screenshot and interaction
-tests inspect actual rendered pixels as well as read-only geometry/renderer diagnostics.
-Golden screenshots must be visually reviewed before acceptance. See docs/visual-review.md.
+Each deterministic 128 × 128 tile models crossed yarns with alternating over/under crossings. Gaming Fabric adds a diagonal pattern. Finite height differences produce tangent-space unit normals. Roughness varies only slightly, from 244/255 to 1. Generated maps have `NoColorSpace`, repeat wrapping, linear filtering and mipmaps. Distant views average away the fine relief; close views reveal structure without displacing the print. Repeats derive from printable-area millimetres, including its offset inside the product.
+
+All top presets have metalness, clearcoat and transmission equal to zero. A modest sheen and reduced dielectric specular intensity avoid a polished coating response. Roughness is `clamp(liveRoughness × profileRoughness/0.88 × presetRoughness/0.88, 0.05, 1)`, then multiplied by the subtle map. With neutral profile and Fine Weave, the live value is unchanged. These are starting material approximations, not measured BRDF data for a named supplier.
+
+`createRubberMaterial(product)` returns a separate dark, rough, nonmetallic backing material with very weak procedural relief. `createStitchedMaterial(perimeterM)` returns a binding material with repeating diagonal yarn relief and restrained sheen. The stitched mesh must supply cumulative perimeter U and across-binding V. The repeat count closes at the seam and gives approximately 1.8 mm stitch pitch. A normal pattern needs visible binding geometry to communicate the physical edge; the helper alone does not establish stitched-edge acceptance.
+
+## HDR studio lighting
+
+`createStudioEnvironment(renderer, preset = 'neutral-studio', resolution = 512)` generates an original float panorama with radiance greater than 1 and convolves it with `PMREMGenerator`. The input is explicitly Linear-sRGB with `EquirectangularReflectionMapping`. Three's data-texture convention places positive Y at v=1; all broad light panels are above v=0.5. The temporary float input and generator are disposed in `finally`. The scene owns the returned render target.
+
+| Preset         | Intended appearance                                                                   |
+| -------------- | ------------------------------------------------------------------------------------- |
+| Neutral Studio | Equal RGB radiance, white key light, subdued light gray ground; regression reference. |
+| Bright Studio  | Broader, brighter white panels and a lighter floor.                                   |
+| Warm Room      | Warm scene-linear illumination and a warm key/floor.                                  |
+| Desk Setup     | Slightly cool overhead light, darker neutral floor, restrained room contrast.         |
+
+`getEnvironmentSettings(preset)` returns display name, background/floor colors, key color/intensity/position, environment intensity and exposure for root scene integration. The factory accepts power-of-two panorama widths from 128 through 2048. The PMREM result is a CubeUV atlas; its GPU allocation differs from the source panorama dimensions. Quality switching must dispose the previous target after successfully creating its replacement.
+
+The studio uses a real receiving floor plane and a directional shadow map. `PCFShadowMap` is the supported r186 path; `PCFSoftShadowMap` was removed. The light's radius softens PCF sampling in this version. Small metre-scale shadow bias settings should be judged with both thin and thick products and a low-angle reference view. Do not substitute a painted shadow.
+
+### Floor/background seam
+
+A `Scene.background` Color becomes the renderer clear color and bypasses tone mapping. Fog is blended before tone mapping. Thus identical CSS strings for background and fog can still produce a visible horizon. Root scene integration should use a background surface passing through the same tone mapping as fog, or explicitly transform the linear fog color through the active tone mapper for the clear background. The floor must extend past the visible view, and fog should reach its final color before the camera's far clipping plane. This is an integration requirement, not a property supplied by the environment factory.
+
+## Resource lifetime and recovery
+
+- Dispose replaced product geometries when switching product or thickness.
+- Material controllers dispose their generated maps on preset replacement and final teardown. Artwork belongs to the texture pipeline and must be disposed there after replacement succeeds.
+- HDR source data can be regenerated deterministically. PMREM pixels are render-target data and must be regenerated after WebGL context restoration; reallocating an empty target is insufficient.
+- Fabric and rubber retain their small CPU arrays, allowing Three to upload again after context restoration.
+- Root scene integration owns shadow targets, renderer, controls, animation loop, observers, and export render targets.
+- Memory estimates describe known texture allocations and mipmap overhead. They are not driver-reported VRAM measurements.
+
+## Verification status
+
+The material/environment CPU suite passes physical-repeat, data-normal, neutral-profile, roughness, ownership/disposal, HDR range, hemisphere and preset-tint invariants. TypeScript and browser shader compilation must be checked again after full scene integration. PBR visual approval requires actual neutral reference captures with gray patches, saturated colors, black and white prints, low-angle fabric detail, underside and stitched binding. See `docs/visual-review.md` for QA decisions. CPU test success alone does not approve realism.
+
+## Primary API references
+
+- [Pinned Three.js MeshPhysicalMaterial source](https://github.com/mrdoob/three.js/blob/r186/src/materials/MeshPhysicalMaterial.js)
+- [Pinned Three.js MeshStandardMaterial source](https://github.com/mrdoob/three.js/blob/r186/src/materials/MeshStandardMaterial.js)
+- [Pinned PMREM generator](https://github.com/mrdoob/three.js/blob/r186/src/extras/PMREMGenerator.js)
+- [Pinned shadow implementation](https://github.com/mrdoob/three.js/blob/r186/src/renderers/shaders/ShaderChunk/shadowmap_pars_fragment.glsl.js)
