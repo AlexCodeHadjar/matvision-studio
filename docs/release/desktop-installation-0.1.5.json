@@ -1,0 +1,12 @@
+{
+  "version": "0.1.5",
+  "installedAt": "2026-09-22T14:57:38.3216895Z",
+  "installedExe": "C:\\Users\\<user>\\AppData\\Local\\Programs\\MatVision Studio\\matvision-studio.exe",
+  "desktopShortcut": "C:\\Users\\<user>\\OneDrive\\Рабочий стол\\MatVision Studio.lnk",
+  "installerExitCode": 0,
+  "sha256": "BFD34652B0A11EF59F265FCE85A53B9E3BD50C309D894AE6002E45435C73F55D",
+  "testProcessId": 20324,
+  "verification": "PASS: installed Windows photo 1920x1232/128 samples on RTX 3050, native PNG/project roundtrip, cancel/reopen, return to studio, local assets, no JS/shader errors",
+  "launchedProcessId": 5300,
+  "normalLaunchWithoutDebugPort": true
+}

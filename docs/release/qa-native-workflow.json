@@ -1,0 +1,26 @@
+{
+  "date": "2026-09-15",
+  "result": "PASS",
+  "suite": "tests/native/project-workflow.e2e.ts",
+  "binary": "src-tauri/target/release/matvision-studio.exe",
+  "binarySha256": "C3DCE74D662948854602E2A57BC8CCE3AF6F6A4E9A84E190859F59EE0089DBA9",
+  "webview2": "153.0.4234.32",
+  "testSeconds": 16.5,
+  "totalSeconds": 24,
+  "dialogs": "Actual Windows dialogs, task-process-owned HWND control automation",
+  "steps": [
+    "Open PNG with Cyrillic filename and spaces",
+    "Select Mouse Pad, Contain, Stitched and top camera",
+    "Save project containing original 1800x800 pixels",
+    "Close application process and relaunch production executable",
+    "Open saved project with Cyrillic filename and spaces",
+    "Verify restored product, layout, edge and original source",
+    "Export actual PNG through native save dialog"
+  ],
+  "evidence": {
+    "window": "tests/visual-evidence/final-native-restored-window.png",
+    "png": "tests/visual-evidence/final-native-export.png",
+    "project": "tests/visual-evidence/final-native-project.matvision"
+  },
+  "manualReview": "Native window and UI-free exported PNG opened and approved by QA"
+}

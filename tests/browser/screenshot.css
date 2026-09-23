@@ -1,0 +1,4 @@
+/* FPS is nondeterministic telemetry, not part of the rendered product. */
+.debug-overlay {
+  visibility: hidden !important;
+}

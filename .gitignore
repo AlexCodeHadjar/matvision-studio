@@ -1,0 +1,21 @@
+node_modules/
+dist/
+src-tauri/target/
+src-tauri/gen/
+test-results/
+playwright-report/
+.vitest/
+*.log
+
+# Local work, secrets and output artifacts
+work/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.matvision
+.DS_Store
+Thumbs.db

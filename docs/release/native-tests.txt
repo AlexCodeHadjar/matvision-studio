@@ -1,0 +1,32 @@
+warn: could not canonicalize path C:\Users\<user>
+   Compiling matvision-studio v0.1.0 (C:\Users\<user>\Documents\Codex\2026-09-15\files-pasted-by-the-user-lead\outputs\MatVisionStudio\src-tauri)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 53.14s
+     Running unittests src\lib.rs (src-tauri\target\debug\deps\matvision_studio_lib-210b618cdf23c5e0.exe)
+
+running 12 tests
+test files::tests::protects_decoded_pixel_and_dimension_limits ... ok
+test files::tests::rejects_windows_devices_and_alternate_streams ... ok
+test commands::tests::file_commands_accept_only_packaged_origin_or_debug_dev_server ... ok
+test files::tests::rejects_relative_traversing_and_non_file_destinations ... ok
+test files::tests::bounds_files_before_reading_and_rejects_empty_files ... ok
+test files::tests::rejects_malformed_json_utf8_and_wrong_project_extension ... ok
+test files::tests::invalid_project_save_preserves_previous_file ... ok
+test files::tests::jpeg_exif_orientation_reports_display_dimensions_without_reencoding ... ok
+test files::tests::exports_valid_png_and_preserves_it_on_invalid_replacement ... ok
+test files::tests::saves_reopens_and_atomically_overwrites_unicode_project ... ok
+test files::tests::rejects_extension_signature_mismatch_and_damaged_pixels ... ok
+test files::tests::imports_png_jpeg_webp_with_original_bytes_and_dimensions ... ok
+
+test result: ok. 12 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+
+     Running unittests src\main.rs (src-tauri\target\debug\deps\matvision_studio-b89ea3b3b6fd8959.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+   Doc-tests matvision_studio_lib
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

@@ -1,0 +1,47 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "MatVision Studio",
+  "version": "0.1.5",
+  "identifier": "studio.matvision.desktop",
+  "build": {
+    "beforeDevCommand": "pnpm dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "pnpm build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "additionalBrowserArgs": "--force_high_performance_gpu",
+        "title": "MatVision Studio",
+        "width": 1440,
+        "height": 960,
+        "minWidth": 1000,
+        "minHeight": 680,
+        "center": true,
+        "dragDropEnabled": false,
+        "backgroundColor": "#15191f"
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' asset: http://asset.localhost blob: data:; connect-src ipc: http://ipc.localhost 'self'; worker-src 'self' blob:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "resources": { "../docs/licenses/": "licenses/" },
+    "targets": ["nsis"],
+    "category": "GraphicsAndDesign",
+    "shortDescription": "Real-time 3D desk mat print visualization",
+    "icon": ["icons/icon.ico", "icons/icon.png"],
+    "windows": {
+      "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },
+      "nsis": {
+        "installMode": "currentUser",
+        "languages": ["English", "Russian"],
+        "displayLanguageSelector": true
+      }
+    }
+  }
+}

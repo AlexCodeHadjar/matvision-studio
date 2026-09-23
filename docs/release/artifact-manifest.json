@@ -1,0 +1,14 @@
+[
+  {
+    "Name": "matvision-studio.exe",
+    "Bytes": 3935232,
+    "SHA256": "C3DCE74D662948854602E2A57BC8CCE3AF6F6A4E9A84E190859F59EE0089DBA9",
+    "Authenticode": "NotSigned"
+  },
+  {
+    "Name": "MatVision Studio_0.1.0_x64-setup.exe",
+    "Bytes": 1456780,
+    "SHA256": "B4EA258C14E25D45462658C468837511D041A6D8C98B3757CC82BD9CD6A88C91",
+    "Authenticode": "NotSigned"
+  }
+]

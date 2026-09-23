@@ -1,0 +1,18 @@
+{
+  "runtime": {
+    "appVersion": "0.1.5",
+    "platform": "windows",
+    "architecture": "x86_64"
+  },
+  "portable": true,
+  "photo": {
+    "width": 1920,
+    "height": 1232,
+    "adapter": "ANGLE (NVIDIA, NVIDIA GeForce RTX 3050 Laptop GPU (0x000025A2) Direct3D11 vs_5_0 ps_5_0, D3D11)"
+  },
+  "returnToStudio": true,
+  "cancelAndReopen": true,
+  "localRequestsOnly": true,
+  "errors": [],
+  "testedInstalledCopy": true
+}

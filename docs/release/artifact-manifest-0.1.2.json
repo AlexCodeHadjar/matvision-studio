@@ -1,0 +1,14 @@
+[
+  {
+    "Name": "MatVisionStudio-0.1.2-x64.exe",
+    "Bytes": 3939840,
+    "SHA256": "7A0341D89BD24C62217CDE0B41294C42FBFA25B1E01A571BAF04347793DF13C4",
+    "Version": "0.1.2"
+  },
+  {
+    "Name": "MatVisionStudio-0.1.2-x64-setup.exe",
+    "Bytes": 1461261,
+    "SHA256": "08B65E2521BAC69AB7D1081188A2E1D47A6439E6027C56AA987D155A7A06E7D7",
+    "Version": "0.1.2"
+  }
+]

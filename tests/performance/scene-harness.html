@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>MatVision resource lifecycle harness</title>
+    <style>
+      body {
+        margin: 0;
+      }
+      #viewport {
+        width: 1098px;
+        height: 892px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="viewport"></div>
+    <script type="module">
+      import { StudioScene } from '/src/scene/StudioScene.ts';
+      import { createDefaultProject } from '/src/project/index.ts';
+      window.matvisionPerformanceModules = { StudioScene, createDefaultProject };
+    </script>
+  </body>
+</html>
