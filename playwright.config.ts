@@ -7,9 +7,9 @@ export default defineConfig({
   forbidOnly: Boolean(process.env.CI),
   retries: 0,
   // Software rendering plus screenshot readback is slower than the native GPU.
-  timeout: 90_000,
+  timeout: process.env.MATVISION_TEST_EDGE ? 180_000 : 90_000,
   expect: {
-    timeout: 15_000,
+    timeout: process.env.MATVISION_TEST_EDGE ? 60_000 : 15_000,
     toHaveScreenshot: {
       maxDiffPixelRatio: 0.015,
       threshold: 0.12,
@@ -24,7 +24,7 @@ export default defineConfig({
     viewport: { width: 1440, height: 1000 },
     deviceScaleFactor: 1,
     colorScheme: 'dark',
-    channel: 'chromium',
+    channel: process.env.MATVISION_TEST_EDGE ? 'msedge' : 'chromium',
     reducedMotion: 'reduce',
     locale: 'en-US',
     timezoneId: 'UTC',

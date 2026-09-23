@@ -57,6 +57,7 @@ export function App() {
   const [activeCamera, setActiveCamera] = useState<CameraPreset>('perspective');
   const [preview, setPreview] = useState<PreviewResolution | null>(null);
   const [editPrint, setEditPrint] = useState(false);
+  const [softboxLighting, setSoftboxLighting] = useState(false);
   const [hiddenUI, setHiddenUI] = useState(false);
   const [settings, setSettings] = useState(false);
   const [help, setHelp] = useState(false);
@@ -486,6 +487,8 @@ export function App() {
           onLayout={onLayout}
           onPreview={onPreview}
           editPrint={editPrint}
+          softboxLighting={softboxLighting}
+          onSoftboxUnsupported={() => setSoftboxLighting(false)}
         />
         <aside className="inspector">
           <div className="inspector-title">
@@ -530,7 +533,12 @@ export function App() {
             onChange={onLayout}
             onReset={() => onLayout(createDefaultLayout())}
           />
-          <MaterialControls state={state} onChange={patch} />
+          <MaterialControls
+            state={state}
+            onChange={patch}
+            softboxLighting={softboxLighting}
+            onSoftboxLighting={setSoftboxLighting}
+          />
           <RealismControls
             onLibrary={() => void applyLibraryFabric()}
             state={state}

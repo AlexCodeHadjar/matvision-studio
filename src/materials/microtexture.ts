@@ -43,6 +43,7 @@ export function generateFabricMaps(preset: MaterialPreset, size = 128) {
     throw new RangeError('Fabric map size must be a power of two from 32 to 1024.');
   }
   const normal = new Uint8Array(size * size * 4);
+  const fiber = new Uint8Array(size * size * 4);
   const roughness = new Uint8Array(size * size * 4);
   const step = 1 / size;
   for (let y = 0; y < size; y++) {
@@ -57,6 +58,14 @@ export function generateFabricMaps(preset: MaterialPreset, size = 128) {
       normal[index + 1] = Math.round((0.5 - (0.5 * dy) / length) * 255);
       normal[index + 2] = Math.round((0.5 + 0.5 / length) * 255);
       normal[index + 3] = 255;
+      // A separate, finer periodic filament layer; stable at tiled UV seams.
+      const fx = 0.11 * Math.sin(TAU * u * 48) * Math.cos(TAU * v * 12);
+      const fy = 0.045 * Math.cos(TAU * u * 16) * Math.sin(TAU * v * 40);
+      const fiberLength = Math.hypot(fx, fy, 1);
+      fiber[index] = Math.round((0.5 + (0.5 * fx) / fiberLength) * 255);
+      fiber[index + 1] = Math.round((0.5 + (0.5 * fy) / fiberLength) * 255);
+      fiber[index + 2] = Math.round((0.5 + 0.5 / fiberLength) * 255);
+      fiber[index + 3] = 255;
       const value = Math.round(244 + 11 * Math.min(1, Math.max(0, fabricHeight(u, v, preset))));
       roughness[index] = value;
       roughness[index + 1] = value;
@@ -64,7 +73,7 @@ export function generateFabricMaps(preset: MaterialPreset, size = 128) {
       roughness[index + 3] = 255;
     }
   }
-  return { normal, roughness, size };
+  return { normal, fiber, roughness, size };
 }
 
 export function createDataMap(data: Uint8Array, size: number): DataTexture {
@@ -83,7 +92,10 @@ export function createFabricMaps(preset: MaterialPreset) {
   const data = generateFabricMaps(preset);
   return {
     normal: createDataMap(data.normal, data.size),
+    fiber: createDataMap(data.fiber, data.size),
     roughness: createDataMap(data.roughness, data.size),
-    approximateBytes: Math.ceil((data.normal.byteLength + data.roughness.byteLength) * (4 / 3)),
+    approximateBytes: Math.ceil(
+      (data.normal.byteLength + data.fiber.byteLength + data.roughness.byteLength) * (4 / 3),
+    ),
   };
 }

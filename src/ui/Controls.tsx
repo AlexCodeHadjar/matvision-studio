@@ -119,9 +119,13 @@ export function PrintControls({
 export function MaterialControls({
   state,
   onChange,
+  softboxLighting,
+  onSoftboxLighting,
 }: {
   state: ProjectState;
   onChange: (patch: Partial<ProjectState>) => void;
+  softboxLighting: boolean;
+  onSoftboxLighting: (enabled: boolean) => void;
 }) {
   return (
     <section className="control-section">
@@ -141,6 +145,17 @@ export function MaterialControls({
           <option value="fine-weave">Fine Weave</option>
           <option value="gaming-fabric">Gaming Fabric</option>
         </select>
+      </label>
+      <label className="field-label">
+        <span>
+          <input
+            type="checkbox"
+            aria-label="Мягкий студийный свет"
+            checked={softboxLighting}
+            onChange={(event) => onSoftboxLighting(event.target.checked)}
+          />{' '}
+          Мягкий студийный свет (эксперимент)
+        </span>
       </label>
       <Slider
         label="Шероховатость"

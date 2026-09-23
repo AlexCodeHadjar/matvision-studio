@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — 2026-09-23
+
+- Added a renderer-independent, transient `MatVisionScene` projection and a `ThreeSceneAdapter` for Studio background, floor, key light and exposure. `.matvision` remains v2; the existing WebGL2 loop and Photo backend remain intact.
+- Added an off-by-default experimental five-softbox rig using Three.js `RectAreaLight` and LTC uniforms, with WebGL2 capability fallback. The cloth now has a separate procedural fiber normal and RNM mixing in this mode. PMREM, PCF shadows, N8AO and the single ACES path remain in place.
+- Documented the architecture and limits. Verified 159 unit tests, TypeScript/lint/build, browser toggle/restoration and black/white clipping checks; the Windows/WebView2 visual review is still needed before enabling the mode by default.
+
 ## 0.1.5 — 2026-09-22
 
 - Quality-first defaults: ultra/detailed, full-resolution N8AO Ultra, SMAA Ultra and up to 4x MSAA with pinned N8AO 2.0.1 and postprocessing 6.39.5. One linear/ACES/sRGB viewport/PNG pipeline. Static shadow caching preserves quality; moving poses refresh shadows.
@@ -8,7 +14,6 @@
 - Added independent fabric weave/relief/sheen and rubber relief controls, a macro camera, deterministic yarn variation and seam LOD hysteresis.
 - Project schema v2 reads v0/v1 and embeds all maps. Opening a project decodes artwork and materials before committing either. Corrupt maps preserve the previous scene. Previous app versions do not read v2.
 - Targeted validation includes color parity, material round-trip/failure rollback, eight animation poses, resource lifetime, 4K PNG and UI import/save/reopen/remove/export. No full regression, clean-Windows certification or RTX benchmark. See REALISM.md and release evidence.
-
 
 ## 0.1.4 — 2026-09-22
 

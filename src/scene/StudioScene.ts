@@ -5,7 +5,6 @@ import {
   CanvasTexture,
   DirectionalLight,
   Float32BufferAttribute,
-  Fog,
   Group,
   InstancedBufferAttribute,
   InstancedMesh,
@@ -44,7 +43,7 @@ import { createRubberMaterial } from '../materials/rubber';
 import { createStitchedMaterial } from '../materials/stitched';
 import { createPlacementSurfaceMaterial } from '../materials/placementSurface';
 import { configureColorPipeline, markColorTexture } from '../color/ColorPipeline';
-import { createStudioEnvironment, getEnvironmentSettings } from './environment';
+import { createStudioEnvironment } from './environment';
 import { QUALITY_SETTINGS } from './quality';
 import { estimateSceneTextureBytes } from './performance';
 import { CameraRig } from '../camera/CameraRig';
@@ -54,6 +53,8 @@ import { log } from '../app/log';
 import { RealtimePipeline } from './RealtimePipeline';
 import { decodeMaterials, type DecodedMaterials } from '../materials/assets';
 import { createPhotoSnapshot } from '../photo/snapshot';
+import { createMatVisionScene, type MatVisionScene } from '../scene-core/MatVisionScene';
+import { ThreeSceneAdapter, type MatVisionRealtimeBackend } from './ThreeSceneAdapter';
 
 type DecodedSource = Awaited<ReturnType<typeof decodeSource>>;
 
@@ -77,7 +78,8 @@ interface ShowcasePlayback {
   rotationY: number;
 }
 
-export class StudioScene implements SceneController {
+export class StudioScene implements SceneController, MatVisionRealtimeBackend {
+  readonly id = 'three-realtime' as const;
   readonly renderer: WebGLRenderer;
   readonly scene = new Scene();
   readonly camera = new PerspectiveCamera(35, 1, 0.005, 30);
@@ -85,6 +87,7 @@ export class StudioScene implements SceneController {
   readonly rig: CameraRig;
   private state: ProjectState;
   private readonly pipeline: RealtimePipeline;
+  private readonly adapter: ThreeSceneAdapter;
   private materialAssets: DecodedMaterials | null = null;
   private materialGeneration = 0;
   private environment: ReturnType<typeof createStudioEnvironment>;
@@ -167,6 +170,13 @@ export class StudioScene implements SceneController {
       200,
       Math.min(8, this.renderer.capabilities.getMaxAnisotropy()),
     );
+    this.adapter = new ThreeSceneAdapter({
+      scene: this.scene,
+      renderer: this.renderer,
+      background: this.backgroundMaterial,
+      key: this.key,
+      setFloor: (surface, color) => this.placementSurface.update(surface, color),
+    });
     this.floor = new Mesh(new PlaneGeometry(200, 200), this.placementSurface.material);
     const product = getProduct(state.productId);
     this.fabric = createFabricMaterial(product, state);
@@ -290,15 +300,22 @@ export class StudioScene implements SceneController {
     this.key.shadow.needsUpdate = true;
   }
   private applyEnvironmentSettings() {
-    const env = getEnvironmentSettings(this.state.environment);
-    this.backgroundMaterial.color.set(env.backgroundColor);
-    this.placementSurface.update(this.state.placementSurface, env.floorColor);
-    this.scene.fog = new Fog(env.backgroundColor, 3, 10);
-    this.key.color.set(env.keyColor);
-    this.key.intensity = env.keyIntensity;
-    this.key.position.fromArray(env.keyPosition);
-    this.scene.environmentIntensity = env.environmentIntensity;
-    this.renderer.toneMappingExposure = env.exposure;
+    this.syncScene(createMatVisionScene(this.state));
+  }
+  syncScene(scene: MatVisionScene) {
+    this.adapter.syncScene(scene);
+  }
+  renderFrame() {
+    this.pipeline.render();
+  }
+  setSoftboxLighting(enabled: boolean): boolean {
+    if (this.disposed || this.contextLost) return false;
+    const changed = this.adapter.setSoftboxes(enabled, createMatVisionScene(this.state));
+    if (changed) {
+      this.fabric.setEnhancedMicrorelief(enabled);
+      this.renderer.shadowMap.needsUpdate = true;
+    }
+    return changed;
   }
   private replaceEnvironment() {
     const next = createStudioEnvironment(
@@ -634,11 +651,8 @@ export class StudioScene implements SceneController {
     this.references.visible = state.referenceMode && !this.rig.underside;
     if (newProduct) this.setCameraPreset('perspective');
     if (state.environment !== before.environment || qualityChanged) this.replaceEnvironment();
-    else if (state.placementSurface !== before.placementSurface)
-      this.placementSurface.update(
-        state.placementSurface,
-        getEnvironmentSettings(state.environment).floorColor,
-      );
+    else if (newProduct || state.placementSurface !== before.placementSurface)
+      this.syncScene(createMatVisionScene(state));
     if (qualityChanged) {
       log('PERFORMANCE', 'quality-changed', { preset: state.quality });
       this.applyQuality();
@@ -869,7 +883,7 @@ export class StudioScene implements SceneController {
       this.stitchThreads.visible = pixelsPerStitch > (this.stitchThreads.visible ? 0.7 : 1.0);
     }
     this.background.position.copy(this.camera.position);
-    this.pipeline.render();
+    this.renderFrame();
     this.frameCount++;
     this.intervalFrames++;
     this.host.dataset.rendererState = 'ready';
@@ -903,7 +917,7 @@ export class StudioScene implements SceneController {
       this.camera.updateProjectionMatrix();
       this.pipeline.resize();
       this.renderer.shadowMap.needsUpdate = true;
-      this.pipeline.render();
+      this.renderFrame();
       const blob = await new Promise<Blob>((resolve, reject) =>
         this.renderer.domElement.toBlob(
           (value) => (value ? resolve(value) : reject(new Error('Не удалось закодировать PNG.'))),
@@ -1006,6 +1020,7 @@ export class StudioScene implements SceneController {
     this.stitches.dispose();
     this.rollDeformer = new MatRollDeformer();
     this.placementSurface.dispose();
+    this.adapter.dispose();
     this.backgroundMaterial.dispose();
     this.environment.dispose();
     this.key.shadow.dispose();

@@ -9,6 +9,8 @@ export function Viewport({
   onLayout,
   onPreview,
   editPrint,
+  softboxLighting,
+  onSoftboxUnsupported,
 }: {
   state: ProjectState;
   onScene: (scene: StudioScene | null) => void;
@@ -16,6 +18,8 @@ export function Viewport({
   onLayout: (layout: PrintLayout) => void;
   onPreview: (resolution: PreviewResolution) => void;
   editPrint: boolean;
+  softboxLighting: boolean;
+  onSoftboxUnsupported: () => void;
 }) {
   const host = useRef<HTMLDivElement>(null);
   const studio = useRef<StudioScene | null>(null);
@@ -55,6 +59,14 @@ export function Viewport({
   useEffect(() => {
     studio.current?.setEditPrint(editPrint);
   }, [editPrint]);
+  useEffect(() => {
+    if (softboxLighting && studio.current && !studio.current.setSoftboxLighting(true)) {
+      setError(
+        'Мягкий студийный свет недоступен на этой видеокарте. Используется прежнее освещение.',
+      );
+      onSoftboxUnsupported();
+    } else if (!softboxLighting) studio.current?.setSoftboxLighting(false);
+  }, [softboxLighting]);
   return (
     <section
       className={`viewport-wrap ${editPrint ? 'editing-print' : ''}`}
