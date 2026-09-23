@@ -76,6 +76,10 @@ The exhaustive geometry topology test now has a local 30-second limit: the first
 
 Installed Windows 0.1.5 photo evidence remains separate in `docs/release/native-quality-0.1.5.json`. It covers 1920 px / 128 samples on RTX 3050 Laptop; higher photo settings and other GPUs are not implied by CI success.
 
+## 0.1.7 native checkpoint · 2026-09-23
+
+`docs/release/native-quality-0.1.7.json` records a built Windows x64 executable and installer, a completed local Blender 4.5.14/Cycles CPU PNG, cancellation and temporary-file cleanup, missing-Blender fallback, and a 128-pass Photo run in WebView2 with SmartDenoise and f/16. The GPU Photo browser smoke used a height map and verified actual displaced triangles. TypeScript, lint, frontend build, 166 Vitest tests and 14 Rust tests passed. Reference-scene definitions are not calibrated visual baselines, and the Cycles prototype does not yet translate stitches, bends or custom material maps.
+
 ## 0.1.6 native checkpoint · 2026-09-23
 
 `docs/release/native-quality-0.1.6.json` records the built Windows x64 release, installer, matched WebView2 baseline against 0.1.5, softbox toggle/restoration and a completed 128-pass Photo run with the toggle enabled. The Photo test confirms compatibility with the unchanged path tracer; it does not claim the new realtime lights are present in Photo. The screenshot dimensions in that smoke report describe the browser capture, not a saved full-resolution Photo PNG. This checkpoint does not certify all GPUs, photo export dimensions or a clean Windows machine.

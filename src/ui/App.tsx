@@ -32,6 +32,7 @@ import { Viewport } from './Viewport';
 import { RollControls } from './RollControls';
 import { RealismControls } from './RealismControls';
 import { PhotoDialog } from './PhotoDialog';
+import { UltimateDialog } from './UltimateDialog';
 import { loadLibraryFabric } from '../materials/library';
 import { Help, MaterialControls, PrintControls, Settings, Slider } from './Controls';
 import './styles.css';
@@ -62,6 +63,7 @@ export function App() {
   const [settings, setSettings] = useState(false);
   const [help, setHelp] = useState(false);
   const [photo, setPhoto] = useState(false);
+  const [ultimate, setUltimate] = useState(false);
   const [busy, setBusyState] = useState('');
   const busyRef = useRef('');
   const setBusy = (message: string) => {
@@ -457,6 +459,9 @@ export function App() {
           <button disabled={!!busy} onClick={() => setPhoto(true)}>
             Фото
           </button>
+          <button disabled={!!busy} onClick={() => setUltimate(true)}>
+            Ultimate
+          </button>
           <button
             onClick={() => {
               setHelp(false);
@@ -677,6 +682,9 @@ export function App() {
       {help && <Help onClose={() => setHelp(false)} />}
       {photo && scene.current && (
         <PhotoDialog scene={scene.current} onClose={() => setPhoto(false)} />
+      )}
+      {ultimate && scene.current && (
+        <UltimateDialog scene={scene.current} state={state} onClose={() => setUltimate(false)} />
       )}
       <input
         data-testid="image-input"

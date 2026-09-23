@@ -23,6 +23,7 @@ import {
 import type { ProjectState } from '../contracts';
 import { generateStudioRadiance, getEnvironmentSettings } from '../scene/environment';
 import { bakePrint, bakeRelief } from './bake';
+import { displacePhotoGeometry, readHeightPixels } from './displacement';
 import { HDRLoader } from 'three/addons/loaders/HDRLoader.js';
 
 export interface PhotoSnapshot {
@@ -34,6 +35,7 @@ export interface PhotoSnapshot {
     expandedThreads: number;
     bakedPrint: boolean;
     bakedHeightMaps: number;
+    displacedTriangles: number;
   };
   dispose(): void;
 }
@@ -122,6 +124,7 @@ export async function createPhotoSnapshot(input: {
   textureSize: number;
   signal: AbortSignal;
   lighting?: 'studio' | 'hdri';
+  displacementMm?: number;
 }): Promise<PhotoSnapshot> {
   const { renderer, mat, floor, state, signal, textureSize } = input;
   const scene = new Scene(),
@@ -129,7 +132,13 @@ export async function createPhotoSnapshot(input: {
   const geometries: BufferGeometry[] = [],
     materials: MeshStandardMaterial[] = [],
     textures: Texture[] = [];
-  const stats = { triangles: 0, expandedThreads: 0, bakedPrint: false, bakedHeightMaps: 0 };
+  const stats = {
+    triangles: 0,
+    expandedThreads: 0,
+    bakedPrint: false,
+    bakedHeightMaps: 0,
+    displacedTriangles: 0,
+  };
   let disposed = false;
   const snapshot: PhotoSnapshot = {
     scene,
@@ -197,6 +206,27 @@ export async function createPhotoSnapshot(input: {
       } else {
         geometry = object.geometry.clone();
         geometry.applyMatrix4(object.matrixWorld);
+      }
+      if (object.material === input.fabric && input.displacementMm) {
+        const heightMap = input.fabric.bumpMap;
+        if (!heightMap) {
+          geometry.dispose();
+          throw new Error('Для геометрического рельефа нужна карта высоты ткани.');
+        }
+        try {
+          const displaced = await displacePhotoGeometry(
+            geometry,
+            readHeightPixels(heightMap),
+            input.displacementMm,
+            signal,
+          );
+          geometry.dispose();
+          geometry = displaced;
+          stats.displacedTriangles = geometry.getAttribute('position').count / 3;
+        } catch (error) {
+          geometry.dispose();
+          throw error;
+        }
       }
       geometries.push(geometry);
       const material = cloneMaterial(object.material);

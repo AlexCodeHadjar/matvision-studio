@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.7 — 2026-09-23
+
+- Expanded Photo with named 512/1024/2048/4096-sample presets, session-only physical-camera controls, optional bundled SmartDenoise on the linear RGBA32F path-tracing target, and bounded Photo-only height-map displacement. Existing ten-bounce path tracing, cancel, Studio geometry and `.matvision` v2 remain.
+- Added an optional local Blender 4.5 LTS/Cycles prototype. A temporary scene package carries a flat rounded mat, original print placement, simple fabric/rubber, camera, floor, area light and procedural HDR environment to an external process. Rust detects actual Cycles devices, reports status, cancels the child and removes temporary files. Unsupported stitched edges, bends and custom material maps are disclosed in the UI; Blender is not bundled.
+- Added eight versioned reference-scene definitions and an explicit capability/calibration matrix. The renderers are not yet visually matched: Cycles currently uses AgX and a provisional light, while Studio/Photo use ACES. OIDN, full material/light translation and weak-PC presets remain future work.
+
 ## 0.1.6 — 2026-09-23
 
 - Added a renderer-independent, transient `MatVisionScene` projection and a `ThreeSceneAdapter` for Studio background, floor, key light and exposure. `.matvision` remains v2; the existing WebGL2 loop and Photo backend remain intact.

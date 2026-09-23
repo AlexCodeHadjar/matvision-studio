@@ -4,6 +4,8 @@
 
 - `photo-render.png`: настоящий нативный PNG 0.1.5, Windows / RTX 3050 Laptop, HDR Poly Haven, 1920 × 1232, 128 проходов. Сохранён исходный шум.
 - `photo-mode.png`, `studio-macro.png`: интерфейс установленной 0.1.5 при проверке фоторежима и макро.
+- `ultimate-prototype-0.1.7.png`: настоящий скриншот нативной Windows-версии 0.1.7 после локального рендера Blender 4.5.14 LTS/Cycles на CPU: демонстрационный принт, 512 px / 16 samples. Это базовый прототип, не доказательство визуального совпадения со Studio и Photo.
+- `photo-smartdenoise-0.1.7.png`: снимок canvas реального Photo-прогона 0.1.7 в Windows/WebView2, 128 проходов, SmartDenoise и f/16; 1296 × 634 px отображаемого canvas. Это не исходный полноразмерный PNG экспорта.
 - `corner-lift.png`, `layer-reveal.png`: демонстрационные деформации 0.1.4, сохранённые в 0.1.5. Они показывают заданные движения, не физический расчёт ткани.
 
 Исходные PNG скопированы без ретуши. Материалы Poly Haven: см. [атрибуцию](../licenses/polyhaven-assets.md).

@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "product": {
+    "widthMm": 900,
+    "heightMm": 400,
+    "thicknessMm": 3,
+    "cornerRadiusMm": 12
+  },
+  "printableArea": {
+    "xMm": 0,
+    "yMm": 0,
+    "widthMm": 900,
+    "heightMm": 400
+  },
+  "printPath": "landscape-grid.png",
+  "printInverse": [1, 0, 0, 0, 1, 0, 0, 0, 1],
+  "materials": {
+    "fabricRoughness": 0.88
+  },
+  "environment": {
+    "intensity": 0.48,
+    "floorColor": "#d3d7d1"
+  },
+  "camera": {
+    "positionMm": [700, 850, 850],
+    "targetMm": [0, 1.5, 0],
+    "fovDeg": 35
+  },
+  "render": {
+    "widthPx": 512,
+    "heightPx": 320,
+    "samples": 16,
+    "device": "CPU"
+  }
+}

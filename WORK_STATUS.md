@@ -1,4 +1,8 @@
-# MatVision Studio 0.1.6
+# MatVision Studio 0.1.7
+
+0.1.7 adds Photo quality presets, optional linear-HDR spatial denoise, camera depth of field and bounded height-map geometry, plus an optional local Blender 4.5 LTS/Cycles Ultimate prototype. The latter translates a basic flat mat, print, camera, floor and provisional lighting through a temporary scene package. It does **not** yet transfer stitches, bending or custom material maps, and the three renderers have not passed visual calibration. Blender remains a separate local installation. See [the exact capability matrix](docs/RENDERERS_0.1.7.md) and [native validation](docs/release/native-quality-0.1.7.json). Weak-PC/FPS presets remain deferred.
+
+## Previous release: 0.1.6
 
 Windows x64 build and installer completed on 2026-09-23. Version 0.1.6 adds a transient Scene Core and an experimental five-softbox realtime lighting option, off by default. No weak-PC/FPS presets were added. `.matvision` remains v2; the separate Photo path tracer is unchanged.
 
@@ -17,7 +21,6 @@ User priority: quality first. Weak-PC presets/FPS work deferred. Universal mat a
 - Current release binary/installer built. Installed 0.1.5, desktop shortcut updated, normal visible launch confirmed. Installed native photo passed again at 1920x1232/128 samples with shipped GPU selection. Evidence: docs/release/desktop-installation-0.1.5.json.
 - Later milestones: fibers, cloth physics evaluation, experimental SSGI. No new physics or denoiser yet; noise at 128 samples is expected. No clean-Windows/full regression or performance acceptance claim.
 - Preserve existing 0.1.4 deliverables and prior working-tree changes.
-
 
 ## GitHub publication · 2026-09-23
 

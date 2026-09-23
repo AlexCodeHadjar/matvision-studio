@@ -1,5 +1,6 @@
 //! Native shell. Rendering stays inside the WebGL2 frontend.
 mod commands;
+mod cycles;
 mod files;
 
 #[derive(serde::Serialize)]
@@ -27,8 +28,14 @@ pub fn run() {
             commands::open_image,
             commands::open_project,
             commands::save_project,
-            commands::save_png
+            commands::save_png,
+            cycles::choose_cycles_executable,
+            cycles::cycles_probe,
+            cycles::cycles_start,
+            cycles::cycles_poll,
+            cycles::cycles_cancel
         ])
+        .manage(std::sync::Arc::new(cycles::CyclesState::default()))
         .setup(|_| {
             #[cfg(debug_assertions)]
             eprintln!("{{\"category\":\"NATIVE\",\"event\":\"shell-ready\"}}");

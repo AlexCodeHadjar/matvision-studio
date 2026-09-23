@@ -1,0 +1,47 @@
+{
+  "version": "0.1.7",
+  "date": "2026-09-23",
+  "platform": "Windows x64 / Tauri 2 / WebView2",
+  "nativeRuntimeVersion": "0.1.7",
+  "checks": {
+    "typecheck": "pass",
+    "eslint": "pass",
+    "viteBuild": "pass",
+    "vitest": "166 passed / 18 files",
+    "rustUnit": "14 passed",
+    "photoBrowserGpu": {
+      "result": "pass",
+      "samples": 2,
+      "displacedTriangles": 131944,
+      "bakedHeightMaps": 1,
+      "errors": []
+    },
+    "ultimateNative": {
+      "result": "pass",
+      "blender": "4.5.14 LTS portable",
+      "device": "CPU",
+      "png": "512 x 329 / 205796 bytes",
+      "cancelCleanup": true,
+      "missingBlenderFallback": true,
+      "webviewErrors": []
+    },
+    "photoNative": {
+      "result": "pass",
+      "samples": 128,
+      "features": ["SmartDenoise", "f/16"],
+      "canvasCapture": "1296 x 634 / 1727 sampled colors",
+      "webviewErrors": []
+    }
+  },
+  "artifacts": {
+    "portableExeSha256": "636bef9ae1968863083953429bde3d0c87f625bbc84df3eb11d3105eb40aade1",
+    "nsisInstallerSha256": "accde3aa39ca5e10adbf087fb197e0a442fca810aef3ce529d70941d61e3fb74"
+  },
+  "limits": [
+    "Cycles is a basic flat-mat prototype, not a calibrated third renderer.",
+    "Cycles does not transfer stitches, bends, custom material maps or the exact Studio lighting.",
+    "Native Photo verification captured the displayed canvas; it did not validate a saved full-resolution PNG.",
+    "High/Ultra/Reference presets and Cycles GPU backends were not rendered in the native checkpoint.",
+    "No clean-Windows installation or cross-GPU certification was performed."
+  ]
+}

@@ -260,7 +260,15 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
       this.controls.enabled = controlsEnabled;
     };
   }
-  preparePhoto(textureSize: number, signal: AbortSignal, lighting: 'studio' | 'hdri' = 'hdri') {
+  get hasFabricHeightMap(): boolean {
+    return Boolean(this.fabric.material.bumpMap);
+  }
+  preparePhoto(
+    textureSize: number,
+    signal: AbortSignal,
+    lighting: 'studio' | 'hdri' = 'hdri',
+    displacementMm = 0,
+  ) {
     const product = getProduct(this.state.productId);
     return createPhotoSnapshot({
       renderer: this.renderer,
@@ -274,6 +282,7 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
       textureSize,
       signal,
       lighting,
+      displacementMm,
     });
   }
   private applyQuality() {

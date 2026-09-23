@@ -21,7 +21,7 @@ fn allowed_origin(url: &tauri::Url, debug: bool) -> bool {
     local_app || development
 }
 
-fn ensure_local_window(window: &WebviewWindow) -> Result<(), String> {
+pub(crate) fn ensure_local_window(window: &WebviewWindow) -> Result<(), String> {
     let url = window
         .url()
         .map_err(|_| "Could not verify the application window.".to_string())?;

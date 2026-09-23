@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "baseline": {
+    "productId": "deskmat-900x400",
+    "resolutionPx": [1280, 800],
+    "photoSamples": 128,
+    "cyclesSamples": 16,
+    "studioOutput": "ACES Filmic / sRGB",
+    "photoOutput": "ACES Filmic / sRGB",
+    "cyclesOutput": "AgX / PNG",
+    "hdrAsset": "public/environments/studio_small_09_2k.hdr"
+  },
+  "scenes": [
+    { "id": "softbox-fabric", "print": "gray-50-srgb.png", "material": "fine-weave", "camera": "perspective", "lighting": "soft-product", "pose": "flat" },
+    { "id": "black-fabric", "print": "black.png", "material": "fine-weave", "camera": "perspective", "lighting": "soft-product", "pose": "flat" },
+    { "id": "bright-print", "print": "white.png", "material": "smooth-cloth", "camera": "top", "lighting": "soft-product", "pose": "flat" },
+    { "id": "macro-weave", "print": "gray-50-srgb.png", "material": "gaming-fabric", "camera": "macro", "lighting": "fabric-macro", "pose": "flat" },
+    { "id": "stitched-edge", "print": "landscape-grid.png", "material": "fine-weave", "camera": "close-up", "lighting": "edge-stitch", "pose": "flat", "edge": "stitched" },
+    { "id": "rubber-bottom", "print": "landscape-grid.png", "material": "fine-weave", "camera": "underside", "lighting": "rubber-bottom", "pose": "flat" },
+    { "id": "rolled-mat", "print": "landscape-grid.png", "material": "fine-weave", "camera": "perspective", "lighting": "soft-product", "pose": "rolled" },
+    { "id": "bent-corner", "print": "landscape-grid.png", "material": "fine-weave", "camera": "close-up", "lighting": "dramatic-product", "pose": "corner-lift" }
+  ]
+}
