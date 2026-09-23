@@ -75,3 +75,7 @@ The initial GitHub publication is based on 0.1.5 with documentation, images and 
 The exhaustive geometry topology test now has a local 30-second limit: the first publication run took over the default 5 seconds while checking every face at three thicknesses. Its assertions were not removed or relaxed. This is a test-runner timeout adjustment, not a change in rendering quality or an FPS target.
 
 Installed Windows 0.1.5 photo evidence remains separate in `docs/release/native-quality-0.1.5.json`. It covers 1920 px / 128 samples on RTX 3050 Laptop; higher photo settings and other GPUs are not implied by CI success.
+
+## 0.1.6 native checkpoint · 2026-09-23
+
+`docs/release/native-quality-0.1.6.json` records the built Windows x64 release, installer, matched WebView2 baseline against 0.1.5, softbox toggle/restoration and a completed 128-pass Photo run with the toggle enabled. The Photo test confirms compatibility with the unchanged path tracer; it does not claim the new realtime lights are present in Photo. The screenshot dimensions in that smoke report describe the browser capture, not a saved full-resolution Photo PNG. This checkpoint does not certify all GPUs, photo export dimensions or a clean Windows machine.

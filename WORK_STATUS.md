@@ -1,4 +1,10 @@
-# Realism release 0.1.5
+# MatVision Studio 0.1.6
+
+Windows x64 build and installer completed on 2026-09-23. Version 0.1.6 adds a transient Scene Core and an experimental five-softbox realtime lighting option, off by default. No weak-PC/FPS presets were added. `.matvision` remains v2; the separate Photo path tracer is unchanged.
+
+Native Windows/WebView2 smoke: runtime reports 0.1.6; 0.1.5 and 0.1.6 Studio frames with the option off match pixel-for-pixel at the same camera and 1420 × 911 viewport. Enabling the rig changed 35.45% of pixels, disabling it restored the exact baseline. With the option enabled, Photo completed 128 passes and returned to Studio without JavaScript errors. The 0.1.6 NSIS installer exited successfully and the installed executable reports version 0.1.6. Details: `docs/release/native-quality-0.1.6.json`. This is targeted validation, not a clean-Windows or full-GPU certification.
+
+## Previous release: 0.1.5
 
 User priority: quality first. Weak-PC presets/FPS work deferred. Universal mat and embedded PBR maps/schema v2 approved.
 

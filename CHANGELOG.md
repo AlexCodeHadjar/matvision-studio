@@ -1,10 +1,10 @@
 # Changelog
 
-## Unreleased — 2026-09-23
+## 0.1.6 — 2026-09-23
 
 - Added a renderer-independent, transient `MatVisionScene` projection and a `ThreeSceneAdapter` for Studio background, floor, key light and exposure. `.matvision` remains v2; the existing WebGL2 loop and Photo backend remain intact.
 - Added an off-by-default experimental five-softbox rig using Three.js `RectAreaLight` and LTC uniforms, with WebGL2 capability fallback. The cloth now has a separate procedural fiber normal and RNM mixing in this mode. PMREM, PCF shadows, N8AO and the single ACES path remain in place.
-- Documented the architecture and limits. Verified 159 unit tests, TypeScript/lint/build, browser toggle/restoration and black/white clipping checks; the Windows/WebView2 visual review is still needed before enabling the mode by default.
+- Documented the architecture and limits. Verified 159 unit tests, TypeScript/lint/build, browser toggle/restoration and black/white clipping checks. Windows/WebView2 0.1.6 reproduced the 0.1.5 Studio baseline pixel-for-pixel with the experiment off, changed and restored the image when toggled, and completed a 128-pass Photo render with the experiment enabled. The new rig remains off by default and applies only to realtime Studio.
 
 ## 0.1.5 — 2026-09-22
 

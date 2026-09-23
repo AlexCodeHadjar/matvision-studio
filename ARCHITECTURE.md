@@ -2,7 +2,7 @@
 
 ## Scope and current state
 
-MatVision Studio is a Windows desktop application: Tauri 2 owns the native window and file integration; React/TypeScript owns application state and UI; Three.js owns a real-time WebGL2 scene. Version 0.1.5 includes portable PBR materials, N8AO/postprocessing and a separate path-traced photo renderer with native Windows evidence. See README and WORK_STATUS for the current verified scope. Contracts describe the required final behaviours; an unimplemented operation must report that limitation, never return a fabricated success. Full roadmap work follows the native gate.
+MatVision Studio is a Windows desktop application: Tauri 2 owns the native window and file integration; React/TypeScript owns application state and UI; Three.js owns a real-time WebGL2 scene. Version 0.1.6 includes portable PBR materials, N8AO/postprocessing, a transient renderer-independent Scene Core, experimental realtime area lights and a separate path-traced photo renderer. See [the renderer architecture](docs/renderer-architecture.md) and WORK_STATUS for the verified scope. Contracts describe the required final behaviours; an unimplemented operation must report that limitation, never return a fabricated success.
 
 ## Module boundaries
 

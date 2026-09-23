@@ -1,0 +1,46 @@
+{
+  "version": "0.1.6",
+  "date": "2026-09-23",
+  "platform": "Windows x64 / Tauri WebView2",
+  "nativeRuntime": {
+    "appVersion": "0.1.6",
+    "platform": "windows",
+    "architecture": "x86_64"
+  },
+  "releaseAssets": [
+    {
+      "name": "MatVisionStudio-0.1.6-x64-setup.exe",
+      "bytes": 20806331,
+      "sha256": "d2d16d2aaef5dda5c778a53a22b62496c1758bfc4e0ccdbed90763d856132147"
+    },
+    {
+      "name": "MatVisionStudio-0.1.6-x64.exe",
+      "bytes": 23067648,
+      "sha256": "498998dd2a05eacec2e2de824956e0ac05f3676e7ab04c6795e6a446320b29ed"
+    }
+  ],
+  "installation": {
+    "silentInstallerExitCode": 0,
+    "installedProductVersion": "0.1.6",
+    "desktopShortcutTargetChecked": true
+  },
+  "matchedStudioBaseline": {
+    "comparison": "0.1.5 vs 0.1.6, same WebView2, camera and 1420x911 viewport, new lighting off",
+    "cameraDifference": 0,
+    "meanMaxPixelDelta": 0,
+    "changedFraction": 0
+  },
+  "experimentalLighting": {
+    "changedFractionOnEnable": 0.3545337889024598,
+    "meanMaxPixelDeltaOnEnable": 8.376054791979097,
+    "meanMaxPixelDeltaAfterDisable": 0,
+    "javascriptErrors": []
+  },
+  "photoWithToggleEnabled": {
+    "completedPasses": 128,
+    "returnedToStudio": true,
+    "javascriptErrors": [],
+    "note": "Photo uses its existing separate path tracer. Smoke capture is not a native full-resolution PNG export."
+  },
+  "scope": "Targeted native smoke and baseline comparison; no clean-Windows, all-GPU or performance certification."
+}
