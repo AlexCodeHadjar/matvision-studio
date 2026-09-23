@@ -8,6 +8,7 @@ import {
   type CyclesStatus,
 } from '../ultimate/CyclesBackend';
 import { createCyclesPackage, cyclesPrototypeWarnings } from '../ultimate/package';
+import { decodeCyclesPng } from '../ultimate/png';
 import { Modal } from './Modal';
 
 const PRESETS = {
@@ -38,7 +39,9 @@ export function UltimateDialog({
   const [progress, setProgress] = useState(0);
   const [detail, setDetail] = useState('Проверка локального Blender/Cycles…');
   const [pngDataUrl, setPngDataUrl] = useState<string | null>(null);
+  const [imageReady, setImageReady] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [saveNotice, setSaveNotice] = useState('');
   const warnings = cyclesPrototypeWarnings(state);
 
   useEffect(() => {
@@ -101,6 +104,7 @@ export function UltimateDialog({
       );
       if (status.stage === 'done') {
         active.current = false;
+        if (!status.pngDataUrl) throw new Error('Cycles завершился без изображения PNG.');
         setPngDataUrl(status.pngDataUrl);
         setPhase('done');
         setDetail(
@@ -133,6 +137,8 @@ export function UltimateDialog({
       device,
     });
     setPngDataUrl(null);
+    setImageReady(false);
+    setSaveNotice('');
     setProgress(0);
     setPhase('preparing');
     setDetail('Создание временного пакета сцены…');
@@ -162,17 +168,22 @@ export function UltimateDialog({
   const save = async () => {
     if (!pngDataUrl) return;
     setSaving(true);
+    setSaveNotice('Открывается окно выбора файла…');
     try {
-      const bytes = new Uint8Array(await (await fetch(pngDataUrl)).arrayBuffer());
-      await saveNativePng(bytes);
+      const bytes = decodeCyclesPng(pngDataUrl);
+      const path = await saveNativePng(bytes);
+      setSaveNotice(path ? `PNG сохранён: ${path}` : 'Сохранение отменено.');
     } catch (error) {
-      setDetail(error instanceof Error ? error.message : String(error));
+      setSaveNotice(
+        `Не удалось сохранить PNG: ${error instanceof Error ? error.message : String(error)}`,
+      );
     } finally {
       setSaving(false);
     }
   };
 
   const running = phase === 'preparing' || phase === 'rendering';
+  const readyToSave = phase === 'done' && imageReady && !!pngDataUrl;
   return (
     <Modal
       titleId="ultimate-title"
@@ -232,13 +243,38 @@ export function UltimateDialog({
                 Рассчитать Ultimate
               </button>
               {running && <button onClick={() => void cancel()}>Отменить рендер</button>}
-              <button disabled={!pngDataUrl || saving} onClick={() => void save()}>
+              <button disabled={!readyToSave || saving} onClick={() => void save()}>
                 {saving ? 'Сохранение…' : 'Сохранить PNG'}
               </button>
             </div>
+            {phase === 'done' && (
+              <p role="status" className="note">
+                {readyToSave
+                  ? 'Изображение готово. Нажмите «Сохранить PNG» и выберите папку.'
+                  : 'Проверяем готовое изображение перед сохранением…'}
+              </p>
+            )}
+            {saveNotice && (
+              <p role="status" className="note">
+                {saveNotice}
+              </p>
+            )}
             <progress aria-label="Готовность Ultimate" max={1} value={progress} />
             {pngDataUrl && (
-              <img className="ultimate-result" src={pngDataUrl} alt="Результат Cycles" />
+              <img
+                className="ultimate-result"
+                src={pngDataUrl}
+                alt="Результат Cycles"
+                onLoad={(event) => {
+                  if (event.currentTarget.naturalWidth > 0 && event.currentTarget.naturalHeight > 0)
+                    setImageReady(true);
+                }}
+                onError={() => {
+                  setImageReady(false);
+                  setPhase('error');
+                  setDetail('Cycles создал PNG, но приложение не смогло показать изображение.');
+                }}
+              />
             )}
           </>
         )}

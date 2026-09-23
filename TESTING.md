@@ -76,6 +76,10 @@ The exhaustive geometry topology test now has a local 30-second limit: the first
 
 Installed Windows 0.1.5 photo evidence remains separate in `docs/release/native-quality-0.1.5.json`. It covers 1920 px / 128 samples on RTX 3050 Laptop; higher photo settings and other GPUs are not implied by CI success.
 
+## 0.1.8 Ultimate PNG save regression · 2026-09-23
+
+`docs/release/native-quality-0.1.8.json` records the actual Windows/WebView2 save path: save disabled before and during rendering; enabled only after the PNG image loaded; a real Save dialog wrote a byte-for-byte copy of the Cycles result. Re-render resets readiness, cancelling a second Save leaves the earlier file intact, and an injected PNG decoding error produces visible feedback with retry enabled. The native render used OptiX on an RTX 3050 Laptop GPU at Draft quality. A unit test checks binary data-URL decoding and invalid-image rejection; existing Rust tests validate malformed PNG rejection and preservation of prior files.
+
 ## 0.1.7 native checkpoint · 2026-09-23
 
 `docs/release/native-quality-0.1.7.json` records a built Windows x64 executable and installer, a completed local Blender 4.5.14/Cycles CPU PNG, cancellation and temporary-file cleanup, missing-Blender fallback, and a 128-pass Photo run in WebView2 with SmartDenoise and f/16. The GPU Photo browser smoke used a height map and verified actual displaced triangles. TypeScript, lint, frontend build, 166 Vitest tests and 14 Rust tests passed. Reference-scene definitions are not calibrated visual baselines, and the Cycles prototype does not yet translate stitches, bends or custom material maps.

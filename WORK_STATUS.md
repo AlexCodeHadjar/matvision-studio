@@ -1,4 +1,8 @@
-# MatVision Studio 0.1.7
+# MatVision Studio 0.1.8
+
+0.1.8 fixes the Windows Ultimate PNG save flow. The already-rendered data URL is decoded locally and passed to the existing binary native save command. The native poller waits for Blender to exit and reads the PNG before reporting "done"; the button then waits for the image to load and shows visible ready/success/cancel/error feedback. Renderer capabilities are otherwise unchanged from 0.1.7. [Native fix verification](docs/release/native-quality-0.1.8.json).
+
+## Previous release: 0.1.7
 
 0.1.7 adds Photo quality presets, optional linear-HDR spatial denoise, camera depth of field and bounded height-map geometry, plus an optional local Blender 4.5 LTS/Cycles Ultimate prototype. The latter translates a basic flat mat, print, camera, floor and provisional lighting through a temporary scene package. It does **not** yet transfer stitches, bending or custom material maps, and the three renderers have not passed visual calibration. Blender remains a separate local installation. See [the exact capability matrix](docs/RENDERERS_0.1.7.md) and [native validation](docs/release/native-quality-0.1.7.json). Weak-PC/FPS presets remain deferred.
 

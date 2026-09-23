@@ -77,6 +77,34 @@ pub struct JobStatus {
     png_data_url: Option<String>,
 }
 
+fn unfinished_status(status: &Value, elapsed_ms: u128) -> JobStatus {
+    let reported_stage = status["stage"].as_str().unwrap_or("preparing");
+    let final_message = matches!(reported_stage, "done" | "error");
+    JobStatus {
+        // The Python status file may say "done" just before Blender exits. Only
+        // the successful child exit plus a validated PNG make a saveable result.
+        stage: if final_message {
+            "rendering"
+        } else {
+            reported_stage
+        }
+        .into(),
+        progress: status["progress"]
+            .as_f64()
+            .unwrap_or(0.)
+            .clamp(0., if final_message { 0.99 } else { 1. }),
+        detail: if reported_stage == "done" {
+            "Cycles завершает запись PNG…".into()
+        } else if reported_stage == "error" {
+            "Cycles завершает работу; проверяется ошибка…".into()
+        } else {
+            status["detail"].as_str().unwrap_or_default().into()
+        },
+        elapsed_ms,
+        png_data_url: None,
+    }
+}
+
 fn command(executable: &Path) -> Command {
     let mut process = Command::new(executable);
     #[cfg(windows)]
@@ -374,7 +402,6 @@ pub async fn cycles_poll(
             .unwrap_or(Value::Null);
         let elapsed_ms = job.started.elapsed().as_millis();
         let detail = status["detail"].as_str().unwrap_or_default().to_owned();
-        let progress = status["progress"].as_f64().unwrap_or(0.).clamp(0., 1.);
         let exit = match job.child.try_wait() {
             Ok(exit) => exit,
             Err(_) => {
@@ -383,13 +410,7 @@ pub async fn cycles_poll(
             }
         };
         match exit {
-            None => Ok(JobStatus {
-                stage: status["stage"].as_str().unwrap_or("preparing").to_owned(),
-                progress,
-                detail,
-                elapsed_ms,
-                png_data_url: None,
-            }),
+            None => Ok(unfinished_status(&status, elapsed_ms)),
             Some(exit) => {
                 let result = if exit.success() {
                     (|| -> Result<JobStatus, String> {
@@ -444,6 +465,24 @@ pub async fn cycles_cancel(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn python_done_before_process_exit_is_not_saveable() {
+        let reported = serde_json::json!({"stage": "done", "progress": 1.0, "detail": "PNG ready"});
+        let observed = unfinished_status(&reported, 120);
+        assert_eq!(observed.stage, "rendering");
+        assert_eq!(observed.progress, 0.99);
+        assert!(observed.png_data_url.is_none());
+        assert!(observed.detail.contains("завершает запись PNG"));
+    }
+
+    #[test]
+    fn python_error_before_process_exit_keeps_polling() {
+        let reported = serde_json::json!({"stage": "error", "progress": 0.5});
+        let observed = unfinished_status(&reported, 220);
+        assert_eq!(observed.stage, "rendering");
+        assert!(observed.png_data_url.is_none());
+    }
 
     #[test]
     fn missing_cycles_is_an_explicit_capability_failure() {

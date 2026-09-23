@@ -1,0 +1,42 @@
+{
+  "version": "0.1.8",
+  "date": "2026-09-23",
+  "platform": "Windows x64 / Tauri 2 / WebView2",
+  "issue": "Ultimate showed a completed PNG but Save PNG did not create a file in 0.1.7.",
+  "fix": "Decode the completed PNG data URL locally, then send binary bytes to the native save command. Treat Python's done status as still rendering until Blender exits and the PNG is read. Show ready, saved, cancelled and error status next to the save button.",
+  "nativeChecks": {
+    "runtimeVersion": "0.1.8",
+    "testedInstalledExe": true,
+    "saveBeforeRenderDisabled": true,
+    "saveDuringRenderDisabled": true,
+    "readyTextAfterImageLoad": true,
+    "saveAfterImageLoadEnabled": true,
+    "cyclesDevice": "OptiX / NVIDIA GeForce RTX 3050 Laptop GPU",
+    "realWindowsSaveDialogCompleted": true,
+    "savedPng": { "width": 512, "height": 329, "bytes": 205675, "byteExactToCyclesResult": true },
+    "rerenderDisablesSaveUntilReadyAgain": true,
+    "nativeSaveCancellationVisible": true,
+    "previousSavedFilePreserved": true,
+    "simulatedDecodeErrorVisibleAndRetryEnabled": true,
+    "webviewErrors": []
+  },
+  "automatedChecks": {
+    "typescript": "pass",
+    "eslint": "pass",
+    "viteBuild": "pass",
+    "vitest": "168 passed / 19 files after the final ready-state UI change",
+    "rustUnit": "16 passed after final race fix",
+    "cargoClippyDenyWarnings": "pass"
+  },
+  "artifacts": {
+    "portableExeSha256": "4c568651e52626add380755cbfd4f522003b436b81f2297848b177d53105c4bb",
+    "nsisInstallerSha256": "fd86c616e8522d60531ce941ec04f40ac901c8b2f0acee368d22d24c42533a89",
+    "installedExeSha256": "e2f4cf770d84f81b66557105d9f943dd868898504fa94332611094745af55798"
+  },
+  "limits": [
+    "The tested render used the Draft preset at 512 px and 16 samples; High and Reference saves were not exercised.",
+    "Error feedback was verified by a simulated decoding failure; native write errors were already covered by Rust unit tests.",
+    "The pinned Playwright Chromium was unavailable locally, so the complete browser screenshot suite did not run; one independent Edge browser scenario passed before runner cleanup was interrupted.",
+    "This does not certify all GPUs or a clean Windows installation."
+  ]
+}

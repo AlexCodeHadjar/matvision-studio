@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.8 — 2026-09-23
+
+- Fixed Ultimate PNG saving in the Windows app. The completed image is decoded locally before binary IPC instead of requesting its `data:` URL through WebView2's restricted `connect-src`. A Cycles status-file "done" is held at "rendering" until Blender exits successfully and the PNG is read, preventing an intermittent premature ready state. The save button activates only after the PNG is displayed successfully; nearby status explains when it is ready and whether saving succeeds, is cancelled or fails.
+
 ## 0.1.7 — 2026-09-23
 
 - Expanded Photo with named 512/1024/2048/4096-sample presets, session-only physical-camera controls, optional bundled SmartDenoise on the linear RGBA32F path-tracing target, and bounded Photo-only height-map displacement. Existing ten-bounce path tracing, cancel, Studio geometry and `.matvision` v2 remain.
