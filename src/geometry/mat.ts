@@ -9,10 +9,11 @@ const CURVE_SEGMENTS = 6;
 export function subdivideBendPerimeter(points: Vector2[]): Vector2[] {
   return points.flatMap((point, index) => {
     const next = points[(index + 1) % points.length]!;
-    const steps =
-      Math.abs(next.x - point.x) < 1e-12
-        ? Math.max(1, Math.ceil(Math.abs(next.y - point.y) / 0.0015))
-        : 1;
+    const steps = Math.max(
+      1,
+      Math.abs(next.x - point.x) < 1e-12 ? Math.ceil(Math.abs(next.y - point.y) / 0.0015) : 1,
+      Math.abs(next.y - point.y) < 1e-12 ? Math.ceil(Math.abs(next.x - point.x) / 0.015) : 1,
+    );
     return Array.from({ length: steps }, (_, step) => point.clone().lerp(next, step / steps));
   });
 }
@@ -32,8 +33,7 @@ function appendCap(
     .map((p) => p.z)
     .sort((a, b) => a - b)
     .filter((z, i, sorted) => i === 0 || z - sorted[i - 1]! > 1e-9);
-  const columns = 1,
-    start = positions.length / 3;
+  const rowIndices: number[][] = [];
   const w = product.widthMm / 1000,
     h = product.heightMm / 1000;
   for (let row = 0; row < rows.length; row++) {
@@ -54,8 +54,25 @@ function appendCap(
         right = Math.max(right, x);
       }
     }
-    for (let column = 0; column <= columns; column++) {
-      const x = left + ((right - left) * column) / columns;
+    const boundary = outline.filter((p) => Math.abs(p.z - z) < 1e-9).map((p) => p.x);
+    const columns = Math.max(2, Math.ceil((right - left) / 0.015));
+    const xs = (
+      row === 0 || row === rows.length - 1
+        ? boundary
+        : [
+            left,
+            right,
+            ...Array.from(
+              { length: columns - 1 },
+              (_, i) => left + ((right - left) * (i + 1)) / columns,
+            ),
+          ]
+    )
+      .sort((a, b) => a - b)
+      .filter((x, i, all) => i === 0 || x - all[i - 1]! > 1e-9);
+    const current: number[] = [];
+    for (const x of xs) {
+      current.push(positions.length / 3);
       positions.push(x, height, z);
       normals.push(0, up ? 1 : -1, 0);
       const area = product.printableArea;
@@ -63,11 +80,25 @@ function appendCap(
         up ? ((x + w / 2) * 1000 - area.xMm) / area.widthMm : (x + w / 2) / w,
         up ? 1 - ((h / 2 + z) * 1000 - area.yMm) / area.heightMm : (-z + h / 2) / h,
       );
-      if (row < rows.length - 1 && column < columns) {
-        const a = start + row * (columns + 1) + column,
-          b = a + columns + 1;
-        if (up) indices.push(a, b, a + 1, a + 1, b, b + 1);
-        else indices.push(a, a + 1, b, a + 1, b + 1, b);
+    }
+    rowIndices.push(current);
+    if (row === 0) continue;
+    const previous = rowIndices[row - 1]!;
+    let i = 0,
+      j = 0;
+    const triangle = (a: number, b: number, c: number) =>
+      up ? indices.push(a, b, c) : indices.push(a, c, b);
+    while (i < previous.length - 1 || j < current.length - 1) {
+      if (
+        j === current.length - 1 ||
+        (i < previous.length - 1 &&
+          positions[previous[i + 1]! * 3]! <= positions[current[j + 1]! * 3]!)
+      ) {
+        triangle(previous[i]!, current[j]!, previous[i + 1]!);
+        i++;
+      } else {
+        triangle(previous[i]!, current[j]!, current[j + 1]!);
+        j++;
       }
     }
   }

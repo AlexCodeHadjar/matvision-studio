@@ -1,6 +1,7 @@
 import {
   BackSide,
   BoxGeometry,
+  Box3,
   BufferGeometry,
   CanvasTexture,
   DirectionalLight,
@@ -17,6 +18,7 @@ import {
   PerspectiveCamera,
   PlaneGeometry,
   Raycaster,
+  RectAreaLight,
   Scene,
   Sprite,
   SpriteMaterial,
@@ -24,6 +26,7 @@ import {
   Vector3,
   WebGLRenderer,
 } from 'three';
+import { RectAreaLightUniformsLib } from 'three/addons/lights/RectAreaLightUniformsLib.js';
 import type {
   CameraPreset,
   CameraState,
@@ -33,8 +36,12 @@ import type {
   PrintSource,
   ProjectState,
   SceneController,
+  ShowcaseAnimation,
 } from '../contracts';
-import { getProduct } from '../products';
+import { getProduct, productKind, activePrintArea, sidePrint, isTextile } from '../products';
+import { MerchProduct } from '../products/MerchProduct';
+import { prepareGarment } from '../geometry/garmentAssets';
+import { prepareCatalogProduct } from '../geometry/catalogAssets';
 import { createMatGeometry } from '../geometry/mat';
 import { MatRollDeformer } from '../geometry/roll';
 import { createStitchedGeometry, STITCH_PITCH_M } from '../geometry/stitch';
@@ -50,8 +57,31 @@ import { CameraRig } from '../camera/CameraRig';
 import { applyPrintLayer } from '../print-layout/material';
 import { decodeSource } from '../textures/import';
 import { log } from '../app/log';
+import { RealtimePipeline } from './RealtimePipeline';
+import { decodeMaterials, type DecodedMaterials } from '../materials/assets';
+import { createPhotoSnapshot } from '../photo/snapshot';
 
 type DecodedSource = Awaited<ReturnType<typeof decodeSource>>;
+
+const SHOWCASE_DURATION: Record<ShowcaseAnimation, number> = {
+  'corner-lift': 4200,
+  'soft-wave': 4200,
+  'table-drop': 4400,
+  'mat-flip': 5600,
+  'dual-roll': 5600,
+  'edge-flyby': 6500,
+  'moving-light': 5200,
+  'layer-reveal': 4800,
+};
+
+interface ShowcasePlayback {
+  id: ShowcaseAnimation;
+  start: number;
+  camera: CameraState;
+  keyPosition: Vector3;
+  keyIntensity: number;
+  rotationY: number;
+}
 
 export class StudioScene implements SceneController {
   readonly renderer: WebGLRenderer;
@@ -60,6 +90,9 @@ export class StudioScene implements SceneController {
   readonly mat = new Group();
   readonly rig: CameraRig;
   private state: ProjectState;
+  private readonly pipeline: RealtimePipeline;
+  private materialAssets: DecodedMaterials | null = null;
+  private materialGeneration = 0;
   private environment: ReturnType<typeof createStudioEnvironment>;
   private readonly fabric: ReturnType<typeof createFabricMaterial>;
   private readonly rubber: ReturnType<typeof createRubberMaterial>;
@@ -76,13 +109,18 @@ export class StudioScene implements SceneController {
   });
   private readonly background = new Mesh(new BoxGeometry(24, 24, 24), this.backgroundMaterial);
   private readonly key = new DirectionalLight();
+  private readonly productSoftbox = new RectAreaLight('#ffffff', 4, 0.45, 0.7);
+  private readonly productFill = new RectAreaLight('#ffffff', 1.2, 0.35, 0.6);
   private readonly undersideLight = new DirectionalLight('#f0f2ed', 0);
   private stitchThreads: InstancedMesh | null = null;
+  private edgeBinding: Mesh | null = null;
   private rollDeformer = new MatRollDeformer();
   private readonly references = new Group();
   private readonly resizeObserver: ResizeObserver;
   private readonly raycaster = new Raycaster();
   private surface: Mesh | null = null;
+  private backingCap: Mesh | null = null;
+  private clothBacking: Mesh | null = null;
   private source: DecodedSource | null = null;
   private sourceGeneration = 0;
   private pendingLoads = 0;
@@ -100,6 +138,8 @@ export class StudioScene implements SceneController {
   private intervalFrames = 0;
   private fps = 0;
   private bounds = new Vector3();
+  private showcase: ShowcasePlayback | null = null;
+  private merch: MerchProduct | null = null;
 
   constructor(
     private readonly host: HTMLElement,
@@ -113,6 +153,7 @@ export class StudioScene implements SceneController {
       antialias: true,
       alpha: false,
       preserveDrawingBuffer: false,
+      powerPreference: 'high-performance',
     });
     if (!context)
       throw new Error('WebGL2 недоступен. Обновите драйвер видеокарты и перезапустите приложение.');
@@ -126,7 +167,10 @@ export class StudioScene implements SceneController {
       log('RENDERER', 'shader-compile-failed');
     };
     configureColorPipeline(this.renderer);
+    this.pipeline = new RealtimePipeline(this.renderer, this.scene, this.camera);
     this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.autoUpdate = false;
+    this.renderer.shadowMap.needsUpdate = true;
     this.renderer.shadowMap.type = PCFShadowMap;
     this.placementSurface = createPlacementSurfaceMaterial(
       200,
@@ -163,6 +207,8 @@ export class StudioScene implements SceneController {
     this.key.shadow.bias = -0.000002;
     this.key.shadow.intensity = 0.85;
     this.scene.add(this.key);
+    RectAreaLightUniformsLib.init();
+    this.scene.add(this.productSoftbox, this.productFill, this.key.target);
     this.undersideLight.position.set(-0.7, -0.9, 0.6);
     this.scene.add(this.undersideLight);
     this.environment = createStudioEnvironment(
@@ -174,9 +220,10 @@ export class StudioScene implements SceneController {
     this.applyEnvironmentSettings();
     this.applyQuality();
     this.rig = new CameraRig(this.camera, canvas);
+    this.rig.setProduct(product);
     this.rig.restore(state.camera);
     host.append(canvas);
-    canvas.setAttribute('aria-label', 'Трёхмерный предпросмотр коврика');
+    canvas.setAttribute('aria-label', 'Трёхмерный предпросмотр продукта');
     canvas.addEventListener('webglcontextlost', this.onContextLost);
     canvas.addEventListener('webglcontextrestored', this.onContextRestored);
     canvas.addEventListener('pointerdown', this.onPointerDown, true);
@@ -187,6 +234,7 @@ export class StudioScene implements SceneController {
     this.resizeObserver = new ResizeObserver(this.resize);
     this.resizeObserver.observe(host);
     this.rebuildMat();
+    this.pipeline.configure(state.realism.mode === 'detailed', state.realism.contactShadow);
     this.resize();
     this.animate();
     log('RENDERER', 'initialized', {
@@ -196,6 +244,44 @@ export class StudioScene implements SceneController {
   }
   get controls() {
     return this.rig.controls;
+  }
+  pauseForPhoto() {
+    if (this.exporting || this.disposed || this.contextLost)
+      throw new Error('Сцена сейчас недоступна для фото.');
+    const start = performance.now(),
+      controlsEnabled = this.controls.enabled;
+    this.exporting = true;
+    this.controls.enabled = false;
+    let resumed = false;
+    return () => {
+      if (resumed) return;
+      resumed = true;
+      if (this.showcase) this.showcase.start += performance.now() - start;
+      this.previousFrameTime = performance.now();
+      this.exporting = false;
+      this.controls.enabled = controlsEnabled;
+    };
+  }
+  async preparePhoto(
+    textureSize: number,
+    signal: AbortSignal,
+    lighting: 'studio' | 'hdri' = 'hdri',
+  ) {
+    await this.merch?.ready();
+    const product = getProduct(this.state.productId);
+    return createPhotoSnapshot({
+      renderer: this.renderer,
+      mat: this.mat,
+      floor: this.floor,
+      camera: this.camera,
+      state: this.state,
+      fabric: this.fabric.material,
+      widthMm: product.widthMm,
+      heightMm: product.heightMm,
+      textureSize,
+      signal,
+      lighting,
+    });
   }
   private applyQuality() {
     const quality = QUALITY_SETTINGS[this.state.quality];
@@ -222,12 +308,34 @@ export class StudioScene implements SceneController {
   }
   private applyEnvironmentSettings() {
     const env = getEnvironmentSettings(this.state.environment);
+    const product = getProduct(this.state.productId);
+    const kind = productKind(product),
+      textile = isTextile(product);
+    const referenceCut = ['hoodie', 'sweatshirt', 'longsleeve'].includes(kind);
     this.backgroundMaterial.color.set(env.backgroundColor);
     this.placementSurface.update(this.state.placementSurface, env.floorColor);
     this.scene.fog = new Fog(env.backgroundColor, 3, 10);
     this.key.color.set(env.keyColor);
     this.key.intensity = env.keyIntensity;
     this.key.position.fromArray(env.keyPosition);
+    this.key.target.position.set(0, textile ? product.heightMm / 2000 : 0, 0);
+    this.productSoftbox.visible = this.productFill.visible = kind !== 'mat';
+    this.key.shadow.normalBias = textile ? 0.0007 : 0.00006;
+    if (kind !== 'mat') {
+      const size = textile ? Math.max(product.heightMm, product.widthMm) / 720 : 0.19,
+        center = textile ? product.heightMm / 2000 : 0.045;
+      this.productSoftbox.width = 0.45 * size;
+      this.productSoftbox.height = 0.7 * size;
+      this.productSoftbox.position.set(-0.65 * size, center + 0.25 * size, 0.42 * size);
+      this.productSoftbox.lookAt(0, center, 0);
+      this.productSoftbox.intensity = referenceCut ? 2.6 : textile ? 2 : 5.5;
+      this.productFill.intensity = referenceCut ? 0.85 : textile ? 0.35 : 1.2;
+      this.productFill.width = 0.35 * size;
+      this.productFill.height = 0.6 * size;
+      this.productFill.position.set(0.65 * size, center + 0.2 * size, 0.25 * size);
+      this.productFill.lookAt(0, center, 0);
+      this.key.intensity *= referenceCut ? 0.4 : textile ? 0.7 : 0.45;
+    }
     this.scene.environmentIntensity = env.environmentIntensity;
     this.renderer.toneMappingExposure = env.exposure;
   }
@@ -251,9 +359,13 @@ export class StudioScene implements SceneController {
   };
   private onContextRestored = () => {
     try {
+      this.renderer.shadowMap.needsUpdate = true;
       this.replaceEnvironment();
       this.artwork.texture.needsUpdate = true;
       if (this.source) this.source.texture.needsUpdate = true;
+      if (this.materialAssets)
+        for (const maps of Object.values(this.materialAssets.textures))
+          for (const texture of Object.values(maps)) texture.needsUpdate = true;
       this.contextLost = false;
       this.onError('');
       log('RENDERER', 'context-restored');
@@ -266,6 +378,7 @@ export class StudioScene implements SceneController {
     const { width, height } = this.host.getBoundingClientRect();
     if (width < 1 || height < 1) return;
     this.renderer.setSize(width, height);
+    this.pipeline.resize();
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
   };
@@ -318,14 +431,51 @@ export class StudioScene implements SceneController {
     this.references.visible = this.state.referenceMode;
   }
   private rebuildMat() {
+    if (this.showcase) this.stopShowcase();
     this.rollDeformer = new MatRollDeformer();
+    this.merch?.dispose();
+    this.merch = null;
     for (const child of [...this.mat.children]) {
       if (child instanceof InstancedMesh) child.dispose();
       if (child instanceof Mesh) child.geometry.dispose();
       this.mat.remove(child);
     }
     const product = getProduct(this.state.productId);
+    this.mat.rotation.set(0, 0, 0);
+    this.mat.position.set(0, 0, 0);
+    this.backingCap = null;
+    this.clothBacking = null;
     this.stitchThreads = null;
+    this.edgeBinding = null;
+    if (productKind(product) !== 'mat') {
+      this.floor.position.y = -0.00002;
+      this.merch = new MerchProduct(
+        product,
+        this.mat,
+        this.renderer.capabilities.maxTextureSize,
+        Math.min(8, this.renderer.capabilities.getMaxAnisotropy()),
+      );
+      const pendingMerch = this.merch;
+      void pendingMerch
+        .sync(this.state)
+        .then(() => {
+          if (this.disposed || this.merch !== pendingMerch) return;
+          this.surface = pendingMerch.activeSurface(this.state);
+          this.bounds = new Box3().setFromObject(this.mat).getSize(new Vector3());
+          this.renderer.shadowMap.needsUpdate = true;
+        })
+        .catch((error) => {
+          if (!this.disposed && this.merch === pendingMerch)
+            this.onError(error instanceof Error ? error.message : 'Не удалось загрузить продукт.');
+        });
+      this.surface = this.merch.activeSurface(this.state);
+      this.bounds = new Box3().setFromObject(this.mat).getSize(new Vector3());
+      this.host.dataset.productId = product.id;
+      this.rig.setProduct(product);
+      this.fitShadowToProduct();
+      this.clearReferences();
+      return;
+    }
     this.floor.position.y = this.state.edgePreset === 'stitched' ? -0.00028 : -0.00002;
     const { body, top } = createMatGeometry(product, this.state.thicknessMm);
     const underside = new Mesh(body, this.rubber.material);
@@ -335,6 +485,22 @@ export class StudioScene implements SceneController {
     this.surface.castShadow = true;
     this.surface.receiveShadow = true;
     this.mat.add(underside, this.surface);
+    // Hidden mating faces avoid coplanar surfaces in the assembled product.
+    this.backingCap = new Mesh(top.clone(), this.rubber.material);
+    this.backingCap.visible = false;
+    this.backingCap.receiveShadow = true;
+    const clothGeometry = top.clone();
+    const clothIndex = clothGeometry.getIndex()!;
+    for (let i = 0; i < clothIndex.count; i += 3) {
+      const a = clothIndex.getX(i);
+      clothIndex.setX(i, clothIndex.getX(i + 2));
+      clothIndex.setX(i + 2, a);
+    }
+    clothGeometry.translate(0, -0.00025, 0);
+    clothGeometry.computeVertexNormals();
+    this.clothBacking = new Mesh(clothGeometry, this.rubber.material);
+    this.clothBacking.visible = false;
+    this.mat.add(this.backingCap, this.clothBacking);
     this.bounds = body.boundingBox!.getSize(new Vector3());
     this.rollDeformer.add(body);
     this.rollDeformer.add(top);
@@ -345,6 +511,7 @@ export class StudioScene implements SceneController {
       const binding = new Mesh(geometry, this.stitches.material);
       binding.castShadow = true;
       this.mat.add(binding);
+      this.edgeBinding = binding;
       this.rollDeformer.add(geometry);
       this.stitchThreads = new InstancedMesh(
         threadGeometry,
@@ -367,6 +534,8 @@ export class StudioScene implements SceneController {
     this.rebuildReferences();
   }
   private applyRoll() {
+    if (this.merch) return;
+    this.renderer.shadowMap.needsUpdate = true;
     this.rollDeformer.apply(
       getProduct(this.state.productId).heightMm / 1000,
       this.state.thicknessMm / 1000,
@@ -375,7 +544,142 @@ export class StudioScene implements SceneController {
     );
     this.printDrag = null;
   }
+  playShowcase(animation: ShowcaseAnimation) {
+    if (this.merch) return;
+    this.stopShowcase();
+    this.showcase = {
+      id: animation,
+      start: performance.now(),
+      camera: this.rig.getState(),
+      keyPosition: this.key.position.clone(),
+      keyIntensity: this.key.intensity,
+      rotationY: this.mat.rotation.y,
+    };
+    this.rig.restore(this.showcase.camera);
+    this.controls.enabled = animation !== 'edge-flyby';
+    this.printDrag = null;
+    this.mat.position.set(0, 0, 0);
+    this.mat.rotation.set(0, 0, 0);
+    this.rollDeformer.apply(
+      getProduct(this.state.productId).heightMm / 1000,
+      this.state.thicknessMm / 1000,
+      0,
+      this.state.edgePreset === 'stitched',
+    );
+    this.host.dataset.showcase = animation;
+    log('ANIMATION', 'showcase-started', { animation });
+  }
+  stopShowcase() {
+    const playback = this.showcase;
+    this.showcase = null;
+    this.mat.position.set(0, 0, 0);
+    if (playback) this.mat.rotation.set(0, playback.rotationY, 0);
+    if (this.backingCap) this.backingCap.visible = false;
+    if (this.clothBacking) this.clothBacking.visible = false;
+    if (this.surface) this.surface.position.set(0, 0, 0);
+    if (this.edgeBinding) this.edgeBinding.position.set(0, 0, 0);
+    if (this.stitchThreads) this.stitchThreads.position.set(0, 0, 0);
+    this.applyRoll();
+    if (playback) {
+      this.key.position.copy(playback.keyPosition);
+      this.key.intensity = playback.keyIntensity;
+      this.rig.restore(playback.camera);
+      log('ANIMATION', 'showcase-stopped', { animation: playback.id });
+    }
+    this.controls.enabled = true;
+    delete this.host.dataset.showcase;
+  }
+  private updateShowcase(now: number) {
+    const playback = this.showcase;
+    if (!playback) return;
+    const duration = SHOWCASE_DURATION[playback.id];
+    const progress = Math.max(0, Math.min(1, (now - playback.start) / duration));
+    const eased = progress * progress * (3 - 2 * progress);
+    const product = getProduct(this.state.productId);
+    const width = product.widthMm / 1000;
+    const height = product.heightMm / 1000;
+    const thickness = this.state.thicknessMm / 1000;
+    if (
+      playback.id === 'corner-lift' ||
+      playback.id === 'soft-wave' ||
+      playback.id === 'dual-roll' ||
+      playback.id === 'table-drop'
+    ) {
+      this.rollDeformer.applyShowcase(
+        width,
+        height,
+        thickness,
+        playback.id,
+        eased,
+        this.state.edgePreset === 'stitched',
+      );
+    } else if (playback.id === 'mat-flip') {
+      const turn =
+        progress < 0.42
+          ? Math.PI * (progress / 0.42) ** 2 * (3 - 2 * (progress / 0.42))
+          : progress < 0.58
+            ? Math.PI
+            : Math.PI *
+              (1 - ((progress - 0.58) / 0.42) ** 2 * (3 - 2 * ((progress - 0.58) / 0.42)));
+      this.mat.rotation.x = turn;
+      this.mat.position.y =
+        (Math.abs(Math.sin(turn)) * height) / 2 +
+        Math.max(0, -Math.cos(turn)) * thickness +
+        Math.sin(Math.PI * progress) ** 2 * 0.055;
+    } else if (playback.id === 'edge-flyby') {
+      const savedPosition = new Vector3().fromArray(playback.camera.position);
+      const savedTarget = new Vector3().fromArray(playback.camera.target);
+      const a = new Vector3(-width * 0.42, Math.max(0.025, thickness * 5), height * 0.62);
+      const b = new Vector3(width * 0.42, Math.max(0.022, thickness * 4), height * 0.62);
+      const c = new Vector3(width * 0.57, Math.max(0.03, thickness * 6), height * 0.38);
+      if (progress < 0.18) {
+        this.camera.position.lerpVectors(savedPosition, a, progress / 0.18);
+        this.controls.target.lerpVectors(
+          savedTarget,
+          new Vector3(-width * 0.3, thickness, height / 2),
+          progress / 0.18,
+        );
+      } else if (progress < 0.67) {
+        const segment = (progress - 0.18) / 0.49;
+        this.camera.position.lerpVectors(a, b, segment);
+        this.controls.target.set(-width * 0.3 + width * 0.8 * segment, thickness, height / 2);
+      } else if (progress < 0.82) {
+        const segment = (progress - 0.67) / 0.15;
+        this.camera.position.lerpVectors(b, c, segment);
+        this.controls.target.set(width / 2, thickness, height * (0.5 - segment * 0.24));
+      } else {
+        const segment = (progress - 0.82) / 0.18;
+        this.camera.position.lerpVectors(c, savedPosition, segment);
+        this.controls.target.lerpVectors(
+          new Vector3(width / 2, thickness, height * 0.26),
+          savedTarget,
+          segment,
+        );
+      }
+      this.camera.lookAt(this.controls.target);
+    } else if (playback.id === 'moving-light') {
+      const angle = 2 * Math.PI * eased;
+      const origin = playback.keyPosition;
+      this.key.position.set(
+        origin.x * Math.cos(angle) - origin.z * Math.sin(angle),
+        origin.y,
+        origin.x * Math.sin(angle) + origin.z * Math.cos(angle),
+      );
+    } else if (playback.id === 'layer-reveal') {
+      const separation = Math.sin(Math.PI * progress) ** 2 * Math.min(0.065, height * 0.15);
+      if (this.surface) this.surface.position.y = separation;
+      if (this.backingCap) this.backingCap.visible = separation > 0.0003;
+      if (this.clothBacking) {
+        this.clothBacking.visible = separation > 0.0003;
+        this.clothBacking.position.y = separation;
+      }
+      if (this.edgeBinding) this.edgeBinding.position.y = separation;
+      if (this.stitchThreads) this.stitchThreads.position.y = separation;
+    }
+    if (progress >= 1) this.stopShowcase();
+  }
   update(state: ProjectState) {
+    this.renderer.shadowMap.needsUpdate = true;
     const before = this.state;
     const newProduct = state.productId !== before.productId;
     const rebuild =
@@ -383,16 +687,46 @@ export class StudioScene implements SceneController {
       state.thicknessMm !== before.thicknessMm ||
       state.edgePreset !== before.edgePreset;
     const qualityChanged = state.quality !== before.quality;
+    if (
+      this.showcase &&
+      (rebuild ||
+        qualityChanged ||
+        state.rollAmount !== before.rollAmount ||
+        state.environment !== before.environment)
+    )
+      this.stopShowcase();
     this.state = state;
     const product = getProduct(state.productId);
     if (rebuild) this.rebuildMat();
     else if (state.rollAmount !== before.rollAmount) this.applyRoll();
     this.fabric.update(product, state);
-    this.rubber.update(product);
+    this.rubber.update(product, state);
+    if (
+      state.realism.mode !== before.realism.mode ||
+      state.realism.contactShadow !== before.realism.contactShadow
+    )
+      this.pipeline.configure(state.realism.mode === 'detailed', state.realism.contactShadow);
     this.printLayer.update(this.sourceDimensions, product.printableArea, state.layout);
+    if (this.merch) {
+      this.surface = this.merch.activeSurface(state);
+      void this.merch
+        .sync(state)
+        .then(() => {
+          if (this.disposed || this.state.productId !== state.productId) return;
+          this.surface = this.merch?.activeSurface(this.state) ?? null;
+          this.bounds = new Box3().setFromObject(this.mat).getSize(new Vector3());
+          this.renderer.shadowMap.needsUpdate = true;
+        })
+        .catch((error) =>
+          this.onError(error instanceof Error ? error.message : 'Не удалось подготовить принт.'),
+        );
+    }
     this.references.visible = state.referenceMode && !this.rig.underside;
     if (newProduct) this.setCameraPreset('perspective');
+    else if (this.merch && product.backPrintableArea && state.printSide !== before.printSide)
+      this.setCameraPreset(state.printSide === 'back' ? 'underside' : 'top');
     if (state.environment !== before.environment || qualityChanged) this.replaceEnvironment();
+    else if (newProduct) this.applyEnvironmentSettings();
     else if (state.placementSurface !== before.placementSurface)
       this.placementSurface.update(
         state.placementSurface,
@@ -410,6 +744,90 @@ export class StudioScene implements SceneController {
   }
   cancelPendingPrint(): void {
     this.sourceGeneration++;
+    this.materialGeneration++;
+  }
+  /** Prepare all maps before committing. A failed import never removes current materials. */
+  async setMaterialAssets(materials: ProjectState['materials']): Promise<boolean> {
+    const generation = ++this.materialGeneration;
+    const next = await decodeMaterials(
+      materials,
+      this.renderer.capabilities.maxTextureSize,
+      Math.min(8, this.renderer.capabilities.getMaxAnisotropy()),
+    );
+    if (this.disposed || generation !== this.materialGeneration) {
+      next.dispose();
+      return false;
+    }
+    this.commitMaterialAssets(next);
+    return true;
+  }
+  private commitMaterialAssets(next: DecodedMaterials) {
+    const previous = this.materialAssets;
+    this.materialAssets = next;
+    this.fabric.setMaps(next.textures.fabric);
+    this.rubber.setMaps(next.textures.rubber);
+    previous?.dispose();
+  }
+  /** Opening a project is atomic across artwork and all material maps. */
+  async loadProject(state: ProjectState): Promise<PreviewResolution | null | undefined> {
+    const generation = ++this.sourceGeneration;
+    const materialGeneration = ++this.materialGeneration;
+    let next: DecodedSource | null = null;
+    let assets: DecodedMaterials | null = null;
+    try {
+      const nextProduct = getProduct(state.productId);
+      if (productKind(nextProduct) === 'tshirt') await prepareGarment(nextProduct);
+      else if (isTextile(nextProduct)) await prepareCatalogProduct(nextProduct);
+      next = state.source
+        ? await decodeSource(state.source, this.renderer.capabilities.maxTextureSize, state.quality)
+        : null;
+      if (getProduct(state.productId).backPrintableArea) {
+        const other = sidePrint(state, state.printSide === 'back' ? 'front' : 'back').source;
+        if (other) {
+          const checked = await decodeSource(
+            other,
+            this.renderer.capabilities.maxTextureSize,
+            state.quality,
+          );
+          checked.dispose();
+        }
+      }
+      assets = await decodeMaterials(
+        state.materials,
+        this.renderer.capabilities.maxTextureSize,
+        Math.min(8, this.renderer.capabilities.getMaxAnisotropy()),
+      );
+    } catch (error) {
+      next?.dispose();
+      assets?.dispose();
+      throw error;
+    }
+    if (
+      this.disposed ||
+      generation !== this.sourceGeneration ||
+      materialGeneration !== this.materialGeneration
+    ) {
+      next?.dispose();
+      assets.dispose();
+      return undefined;
+    }
+    if (next) next.texture.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+    const previous = this.source;
+    this.source = next;
+    this.sourceDimensions = state.source ?? { widthPx: 1800, heightPx: 800 };
+    this.fabric.setPrintTexture(next?.texture ?? this.artwork.texture);
+    this.commitMaterialAssets(assets);
+    // Already decoded at the requested quality; avoid a redundant artwork decode in update.
+    this.pendingLoads++;
+    try {
+      this.update(state);
+    } finally {
+      this.pendingLoads--;
+    }
+    this.restoreCamera(state.camera);
+    await this.merch?.ready();
+    previous?.dispose();
+    return next ? { widthPx: next.widthPx, heightPx: next.heightPx } : null;
   }
   async setPrintSource(source: PrintSource | null): Promise<PreviewResolution | null> {
     const generation = ++this.sourceGeneration;
@@ -441,6 +859,7 @@ export class StudioScene implements SceneController {
       getProduct(this.state.productId).printableArea,
       this.state.layout,
     );
+    await this.merch?.sync({ ...this.state, source });
     previous?.dispose();
     log('TEXTURE', 'preview-ready', {
       width: next?.widthPx ?? 1800,
@@ -464,13 +883,17 @@ export class StudioScene implements SceneController {
     );
     const hit = this.raycaster.intersectObject(this.surface, false)[0];
     if (!hit?.uv) return null;
+    const uv = this.merch
+      ? this.merch.printUv(this.state, hit.uv.x, hit.uv.y)
+      : { u: hit.uv.x, v: hit.uv.y };
+    if (this.merch && (uv.u < 0 || uv.u > 1 || uv.v < 0 || uv.v > 1)) return null;
     // Recover the undeformed print coordinates: dragging works on a curled surface too.
     const product = getProduct(this.state.productId),
-      area = product.printableArea;
+      area = activePrintArea(this.state);
     return new Vector3(
-      (area.xMm + hit.uv.x * area.widthMm - product.widthMm / 2) / 1000,
+      (area.xMm + uv.u * area.widthMm - product.widthMm / 2) / 1000,
       this.state.thicknessMm / 1000,
-      (area.yMm + (1 - hit.uv.y) * area.heightMm - product.heightMm / 2) / 1000,
+      (area.yMm + (1 - uv.v) * area.heightMm - product.heightMm / 2) / 1000,
     );
   }
   private onPointerDown = (event: PointerEvent) => {
@@ -489,7 +912,7 @@ export class StudioScene implements SceneController {
     event.stopImmediatePropagation();
     const point = this.pointOnMat(event);
     if (!point) return;
-    const area = getProduct(this.state.productId).printableArea;
+    const area = activePrintArea(this.state);
     this.onLayoutChange?.({
       ...drag.layout,
       offsetX: Math.max(
@@ -522,17 +945,18 @@ export class StudioScene implements SceneController {
     });
   };
   setCameraPreset(preset: CameraPreset) {
+    if (this.showcase) this.stopShowcase();
     this.rig.setPreset(preset, getProduct(this.state.productId), this.state.thicknessMm);
-    this.floor.visible = preset !== 'underside';
+    this.floor.visible = !this.rig.underside;
     this.references.visible = this.state.referenceMode && preset !== 'underside';
   }
   restoreCamera(state: CameraState) {
     this.rig.restore(state);
-    this.floor.visible = state.preset !== 'underside';
+    this.floor.visible = !this.rig.underside;
     this.references.visible = this.state.referenceMode && state.preset !== 'underside';
   }
   getCameraState(): CameraState {
-    return this.rig.getState();
+    return this.showcase?.camera ?? this.rig.getState();
   }
   private animate = () => {
     if (this.disposed) return;
@@ -541,8 +965,10 @@ export class StudioScene implements SceneController {
       dt = Math.min(0.1, (now - this.previousFrameTime) / 1000);
     this.previousFrameTime = now;
     if (this.contextLost || this.exporting || this.shaderFailed) return;
-    if (this.state.turntable && !this.editPrint) this.mat.rotation.y += dt * 0.12;
-    this.rig.update(now, this.state.thicknessMm);
+    if (this.state.turntable && !this.editPrint && !this.showcase) this.mat.rotation.y += dt * 0.12;
+    if (this.showcase?.id !== 'edge-flyby') this.rig.update(now, this.state.thicknessMm);
+    this.updateShowcase(now);
+    if (this.showcase || this.state.turntable) this.renderer.shadowMap.needsUpdate = true;
     // A user can interrupt a transition before it crosses the mat. Use the actual
     // camera hemisphere so the floor never obscures a cancelled underside view.
     this.floor.visible = this.camera.position.y >= this.state.thicknessMm / 2000;
@@ -553,10 +979,10 @@ export class StudioScene implements SceneController {
       const pixelsPerStitch =
         (this.renderer.domElement.height * STITCH_PITCH_M) /
         (2 * Math.tan((this.camera.fov * Math.PI) / 360) * distance);
-      this.stitchThreads.visible = pixelsPerStitch > 0.85;
+      this.stitchThreads.visible = pixelsPerStitch > (this.stitchThreads.visible ? 0.7 : 1.0);
     }
     this.background.position.copy(this.camera.position);
-    this.renderer.render(this.scene, this.camera);
+    this.pipeline.render();
     this.frameCount++;
     this.intervalFrames++;
     this.host.dataset.rendererState = 'ready';
@@ -567,9 +993,14 @@ export class StudioScene implements SceneController {
     }
   };
   async exportPng(options: ExportOptions): Promise<Blob> {
+    await this.merch?.ready();
     if (this.contextLost || this.disposed || this.shaderFailed)
       throw new Error('Графика недоступна для экспорта.');
     if (this.exporting) throw new Error('Экспорт уже выполняется.');
+    if (this.state.realism.mode === 'detailed' && options.widthPx * options.heightPx > 10_000_000)
+      throw new Error(
+        'Детальный PNG ограничен 10 мегапикселями. Уменьшите размер или выберите быстрый режим.',
+      );
     const limit = Math.min(8192, this.renderer.capabilities.maxTextureSize);
     if (
       ![options.widthPx, options.heightPx].every((n) => Number.isInteger(n) && n > 0 && n <= limit)
@@ -584,7 +1015,9 @@ export class StudioScene implements SceneController {
       this.renderer.setSize(options.widthPx, options.heightPx, false);
       this.camera.aspect = options.widthPx / options.heightPx;
       this.camera.updateProjectionMatrix();
-      this.renderer.render(this.scene, this.camera);
+      this.pipeline.resize();
+      this.renderer.shadowMap.needsUpdate = true;
+      this.pipeline.render();
       const blob = await new Promise<Blob>((resolve, reject) =>
         this.renderer.domElement.toBlob(
           (value) => (value ? resolve(value) : reject(new Error('Не удалось закодировать PNG.'))),
@@ -612,7 +1045,8 @@ export class StudioScene implements SceneController {
         this.fabric.ownedTextureBytes +
         this.rubber.ownedTextureBytes +
         this.stitches.ownedTextureBytes +
-        this.placementSurface.ownedTextureBytes,
+        this.placementSurface.ownedTextureBytes +
+        (this.materialAssets?.approximateBytes ?? 0),
       environmentWidth: this.environment.width,
       environmentHeight: this.environment.height,
       shadowSize: this.key.shadow.mapSize.x,
@@ -643,6 +1077,8 @@ export class StudioScene implements SceneController {
       geometries: this.renderer.info.memory.geometries,
       programs: this.renderer.info.programs?.length ?? 0,
       approximateTextureBytes,
+      approximateEffectBytes: this.pipeline.approximateBytes,
+      realismMode: this.state.realism.mode,
       rendererWidthPx: size.x,
       rendererHeightPx: size.y,
       contextLost: this.contextLost,
@@ -651,10 +1087,12 @@ export class StudioScene implements SceneController {
       sourceWidthPx: this.sourceDimensions.widthPx,
       sourceHeightPx: this.sourceDimensions.heightPx,
       matRotationY: this.mat.rotation.y,
+      showcase: this.showcase?.id ?? null,
     };
   }
   dispose() {
     this.disposed = true;
+    this.stopShowcase();
     this.sourceGeneration++;
     cancelAnimationFrame(this.frame);
     this.resizeObserver.disconnect();
@@ -673,7 +1111,10 @@ export class StudioScene implements SceneController {
       if (object instanceof Mesh) object.geometry.dispose();
     });
     this.printLayer.dispose();
+    this.merch?.dispose();
     this.source?.dispose();
+    this.materialAssets?.dispose();
+    this.pipeline.dispose();
     this.artwork.texture.dispose();
     this.fabric.dispose();
     this.rubber.dispose();

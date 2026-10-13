@@ -5,14 +5,28 @@ import type {
   PrintLayout,
   PrintSource,
   ProjectState,
+  MaterialTarget,
+  MaterialMapKind,
+  PrintSide,
+  ProductKind,
 } from '../contracts';
-import { PRODUCTS, getProduct } from '../products';
+import {
+  PRODUCTS,
+  getProduct,
+  productKind,
+  activePrintArea,
+  sidePrint,
+  initialPrintLayout,
+  PRODUCT_CATEGORIES,
+  isTextile,
+} from '../products';
 import { log, logError } from '../app/log';
 import {
-  createDefaultLayout,
   createDefaultProject,
   parseProject,
   serializeProject,
+  MAX_MATERIAL_BYTES,
+  validateMaterialAssets,
 } from '../project';
 import { importImageFile } from '../textures/import';
 import { computeEffectiveDpi } from '../print-layout/layout';
@@ -26,14 +40,19 @@ import {
 import type { StudioScene } from '../scene/StudioScene';
 import { Viewport } from './Viewport';
 import { RollControls } from './RollControls';
+import { RealismControls } from './RealismControls';
+import { PhotoDialog } from './PhotoDialog';
+import { loadLibraryFabric } from '../materials/library';
 import { Help, MaterialControls, PrintControls, Settings, Slider } from './Controls';
 import './styles.css';
+import { ProductPrintControls } from './ProductPrintControls';
 
 const cameras: [CameraPreset, string][] = [
   ['perspective', 'Перспектива'],
   ['top', 'Сверху'],
   ['low-angle', 'Низкий угол'],
   ['close-up', 'Крупный план'],
+  ['macro', 'Макро ткани'],
   ['underside', 'Снизу'],
 ];
 function download(blob: Blob, name: string) {
@@ -52,6 +71,7 @@ export function App() {
   const [hiddenUI, setHiddenUI] = useState(false);
   const [settings, setSettings] = useState(false);
   const [help, setHelp] = useState(false);
+  const [photo, setPhoto] = useState(false);
   const [busy, setBusyState] = useState('');
   const busyRef = useRef('');
   const setBusy = (message: string) => {
@@ -68,9 +88,22 @@ export function App() {
   const stateRef = useRef(state);
   stateRef.current = state;
   const product = getProduct(state.productId);
+  const kind = productKind(product);
+  const productSize =
+    kind === 'mug'
+      ? `Диаметр ${product.mugDiameterMm} мм · высота ${product.heightMm} мм · 330 мл`
+      : isTextile(product)
+        ? `${PRODUCT_CATEGORIES.find(([id]) => id === kind)?.[1]} · зона ${activePrintArea(state).widthMm} × ${activePrintArea(state).heightMm} мм`
+        : `${product.widthMm} × ${product.heightMm} мм · ${state.thicknessMm} мм`;
+  const productSessions = useRef(new Map<string, ProjectState>());
   const onScene = useCallback((value: StudioScene | null) => {
     scene.current = value;
   }, []);
+  const onPlayShowcase = useCallback((animation: Parameters<StudioScene['playShowcase']>[0]) => {
+    setEditPrint(false);
+    scene.current?.playShowcase(animation);
+  }, []);
+  const onStopShowcase = useCallback(() => scene.current?.stopShowcase(), []);
   const onLayout = useCallback((layout: PrintLayout) => setState((s) => ({ ...s, layout })), []);
   const onPreview = useCallback(
     (resolution: PreviewResolution) =>
@@ -103,16 +136,24 @@ export function App() {
     const resolution = await controller.setPrintSource(source);
     if (request !== sourceRequest.current) return;
     setPreview(resolution);
-    setState((s) => ({ ...s, source, layout: createDefaultLayout() }));
+    setState((s) => ({
+      ...s,
+      source,
+      layout: initialPrintLayout(s.productId, source, s.printSide),
+    }));
     setNotice({
       text: `Изображение применено: ${source.widthPx} × ${source.heightPx} px`,
       error: false,
     });
   };
   const importFile = async (file: File) => {
-    if (busyRef.current === 'Сохранение проекта…' || busyRef.current === 'Рендер PNG…') {
+    if (
+      busyRef.current &&
+      busyRef.current !== 'Подготовка изображения…' &&
+      busyRef.current !== 'Открытие изображения…'
+    ) {
       setNotice({
-        text: 'Дождитесь завершения сохранения и повторите загрузку изображения.',
+        text: 'Дождитесь завершения текущей операции и повторите загрузку изображения.',
         error: true,
       });
       return;
@@ -151,17 +192,145 @@ export function App() {
     const restored = parseProject(contents);
     const controller = scene.current;
     if (!controller) throw new Error('3D-сцена ещё не готова.');
-    const resolution = await controller.setPrintSource(restored.source);
-    if (request !== sourceRequest.current) return;
-    controller.update(restored);
-    controller.restoreCamera(restored.camera);
+    const resolution = await controller.loadProject(restored);
+    if (request !== sourceRequest.current || resolution === undefined) return;
     setState(restored);
     setPreview(resolution);
     setActiveCamera(restored.camera.preset);
     setEditPrint(false);
     log('PROJECT', 'restored', { productId: restored.productId, embeddedImage: !!restored.source });
     projectPath.current = undefined;
-    setNotice({ text: 'Проект восстановлен вместе с исходным изображением.', error: false });
+    setNotice({ text: 'Проект восстановлен вместе с принтом и материалами.', error: false });
+  };
+  const changeProduct = async (id: string) => {
+    if (busyRef.current || id === stateRef.current.productId || !scene.current) return;
+    const current = stateRef.current;
+    productSessions.current.set(current.productId, {
+      ...current,
+      camera: scene.current.getCameraState(),
+    });
+    const defaults = createDefaultProject(id);
+    const next = productSessions.current.get(id) ?? {
+      ...defaults,
+      source: current.source,
+      layout: initialPrintLayout(id, current.source),
+      environment: current.environment,
+      placementSurface: current.placementSurface,
+      quality: current.quality,
+    };
+    const request = beginSourceRequest();
+    setBusy('Подготовка продукта…');
+    try {
+      const resolution = await scene.current.loadProject(next);
+      if (request !== sourceRequest.current || resolution === undefined) return;
+      setState(next);
+      setPreview(resolution);
+      setEditPrint(false);
+      setActiveCamera(next.camera.preset);
+      projectPath.current = undefined;
+      setNotice({ text: `Выбран продукт: ${getProduct(id).displayName}`, error: false });
+    } catch (error) {
+      fail(error);
+    } finally {
+      if (request === sourceRequest.current) setBusy('');
+    }
+  };
+  const changeKind = (value: ProductKind) => {
+    const id = PRODUCTS.find((p) => productKind(p) === value)?.id;
+    if (id) void changeProduct(id);
+  };
+  const changePrintSide = async (side: PrintSide) => {
+    const current = stateRef.current;
+    if (busyRef.current || !scene.current || side === (current.printSide ?? 'front')) return;
+    const saved = {
+      ...current.sidePrints,
+      [current.printSide ?? 'front']: { source: current.source, layout: current.layout },
+    };
+    const nextPrint = sidePrint({ ...current, sidePrints: saved }, side);
+    const p = getProduct(current.productId);
+    const next: ProjectState = {
+      ...current,
+      printSide: side,
+      sidePrints: saved,
+      ...nextPrint,
+      camera: {
+        ...p.defaultCameraFraming,
+        preset: side === 'back' ? 'underside' : 'top',
+        position: [0, 0.36, side === 'back' ? -1.55 : 1.55],
+      },
+    };
+    const request = beginSourceRequest();
+    setBusy('Подготовка стороны печати…');
+    try {
+      const resolution = await scene.current.loadProject(next);
+      if (request !== sourceRequest.current || resolution === undefined) return;
+      setState(next);
+      setPreview(resolution);
+      setEditPrint(false);
+      setActiveCamera(next.camera.preset);
+    } catch (error) {
+      fail(error);
+    } finally {
+      if (request === sourceRequest.current) setBusy('');
+    }
+  };
+  const changeMaterialMap = async (
+    target: MaterialTarget,
+    kind: MaterialMapKind,
+    remove: boolean,
+    file?: File,
+  ) => {
+    if (busyRef.current) return;
+    const controller = scene.current;
+    if (!controller) return;
+    setBusy('Подготовка материала…');
+    setNotice(null);
+    try {
+      if (file && file.size > MAX_MATERIAL_BYTES)
+        throw new Error('Карта материала превышает 8 МиБ.');
+      const source = remove ? null : file ? await importImageFile(file) : await openNativeImage();
+      if (!remove && !source) return;
+      const current = stateRef.current;
+      const maps = { ...current.materials[target].maps };
+      if (source) maps[kind] = source;
+      else delete maps[kind];
+      const materials = {
+        ...current.materials,
+        [target]: validateMaterialAssets({ ...current.materials[target], maps }),
+      };
+      if (!(await controller.setMaterialAssets(materials))) return;
+      setState((s) => ({ ...s, materials }));
+      controller.update({ ...stateRef.current, materials });
+      setNotice({
+        text: remove
+          ? 'Карта удалена. Восстановлена встроенная поверхность.'
+          : `Материал применён: ${source!.name}`,
+        error: false,
+      });
+    } catch (error) {
+      fail(error);
+    } finally {
+      setBusy('');
+    }
+  };
+  const applyLibraryFabric = async () => {
+    if (busyRef.current || !scene.current) return;
+    setBusy('Подготовка ткани Poly Haven…');
+    try {
+      const fabric = await loadLibraryFabric();
+      const materials = { ...stateRef.current.materials, fabric };
+      if (!(await scene.current.setMaterialAssets(materials))) return;
+      setState((s) => ({ ...s, materials }));
+      scene.current.update({ ...stateRef.current, materials });
+      setNotice({
+        text: 'Ткань Poly Haven применена. Карты будут сохранены внутри проекта.',
+        error: false,
+      });
+    } catch (error) {
+      fail(error);
+    } finally {
+      setBusy('');
+    }
   };
   const openProject = async () => {
     if (busyRef.current) return;
@@ -314,7 +483,7 @@ export function App() {
     return () => window.removeEventListener('keydown', key);
   }, []);
   const dpi = state.source
-    ? computeEffectiveDpi(state.source, product.printableArea, state.layout)
+    ? computeEffectiveDpi(state.source, activePrintArea(state), state.layout)
     : null;
   return (
     <div className={`app-shell ${hiddenUI ? 'ui-hidden' : ''}`}>
@@ -331,21 +500,18 @@ export function App() {
           <select
             aria-label="Продукт"
             value={state.productId}
-            onChange={(e) => {
-              const p = getProduct(e.target.value);
-              setState((s) => ({
-                ...s,
-                productId: p.id,
-                thicknessMm: p.thicknessMm,
-                camera: { ...p.defaultCameraFraming, preset: 'perspective' },
-              }));
-              setActiveCamera('perspective');
-            }}
+            disabled={!!busy}
+            onChange={(e) => void changeProduct(e.target.value)}
           >
-            {PRODUCTS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.displayName} · {p.widthMm} × {p.heightMm} мм
-              </option>
+            {PRODUCT_CATEGORIES.map(([category, label]) => (
+              <optgroup key={category} label={label}>
+                {PRODUCTS.filter((p) => productKind(p) === category).map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.displayName}
+                    {category === 'mat' ? ` · ${p.widthMm} × ${p.heightMm} мм` : ''}
+                  </option>
+                ))}
+              </optgroup>
             ))}
           </select>
         </label>
@@ -379,6 +545,9 @@ export function App() {
           <button disabled={!!busy} onClick={() => void exportPreview()} title="Ctrl+E">
             Экспорт PNG
           </button>
+          <button disabled={!!busy} onClick={() => setPhoto(true)}>
+            Фото
+          </button>
           <button
             onClick={() => {
               setHelp(false);
@@ -411,12 +580,17 @@ export function App() {
           editPrint={editPrint}
         />
         <aside className="inspector">
+          <ProductPrintControls
+            state={state}
+            busy={!!busy}
+            onKind={changeKind}
+            onSide={(side) => void changePrintSide(side)}
+            onChange={patch}
+          />
           <div className="inspector-title">
             <span className="eyebrow">ВАШ ПРИНТ В РЕАЛЬНОМ МАСШТАБЕ</span>
             <h1>{product.displayName}</h1>
-            <p>
-              {product.widthMm} × {product.heightMm} мм · {state.thicknessMm} мм
-            </p>
+            <p>{productSize}</p>
           </div>
           <div className="source-card" data-testid="source-info">
             {state.source ? (
@@ -441,7 +615,7 @@ export function App() {
                 <span>
                   Перетащите PNG / JPEG / WebP
                   <br />
-                  на коврик или откройте файл.
+                  на продукт или откройте файл.
                 </span>
               </>
             )}
@@ -451,56 +625,74 @@ export function App() {
             edit={editPrint}
             onEdit={() => setEditPrint((v) => !v)}
             onChange={onLayout}
-            onReset={() => onLayout(createDefaultLayout())}
+            onReset={() =>
+              onLayout(initialPrintLayout(state.productId, state.source, state.printSide))
+            }
           />
           <MaterialControls state={state} onChange={patch} />
-          <section className="control-section">
-            <h2>
-              <span>03</span> Продукт
-            </h2>
-            <Slider
-              label="Толщина"
-              min={1}
-              max={6}
-              step={0.5}
-              value={state.thicknessMm}
-              suffix=" мм"
-              onChange={(thicknessMm) => patch({ thicknessMm })}
+          {kind === 'mat' && (
+            <RealismControls
+              onLibrary={() => void applyLibraryFabric()}
+              state={state}
+              busy={!!busy}
+              onChange={patch}
+              onImport={(target, kind, file) => void changeMaterialMap(target, kind, false, file)}
+              onRemove={(target, kind) => void changeMaterialMap(target, kind, true)}
             />
-            <label className="field-label">
-              Край
-              <select
-                aria-label="Край"
-                value={state.edgePreset}
-                onChange={(e) =>
-                  patch({ edgePreset: e.target.value as ProjectState['edgePreset'] })
-                }
-              >
-                <option value="standard-cut">Standard Cut</option>
-                <option value="stitched">Stitched Edge</option>
-              </select>
-            </label>
-            <label className="check-label">
-              <input
-                type="checkbox"
-                checked={state.referenceMode}
-                onChange={(e) => patch({ referenceMode: e.target.checked })}
+          )}
+          {kind === 'mat' && (
+            <section className="control-section">
+              <h2>
+                <span>04</span> Продукт
+              </h2>
+              <Slider
+                label="Толщина"
+                min={1}
+                max={6}
+                step={0.5}
+                value={state.thicknessMm}
+                suffix=" мм"
+                onChange={(thicknessMm) => patch({ thicknessMm })}
               />
-              Линейка · реальный масштаб
-            </label>
-          </section>
-          <RollControls
-            value={state.rollAmount}
-            onChange={(rollAmount) => {
-              setEditPrint(false);
-              patch({ rollAmount });
-            }}
-            disabled={!!busy}
-            resetKey={state.productId}
-          />
+              <label className="field-label">
+                Край
+                <select
+                  aria-label="Край"
+                  value={state.edgePreset}
+                  onChange={(e) =>
+                    patch({ edgePreset: e.target.value as ProjectState['edgePreset'] })
+                  }
+                >
+                  <option value="standard-cut">Standard Cut</option>
+                  <option value="stitched">Stitched Edge</option>
+                </select>
+              </label>
+              <label className="check-label">
+                <input
+                  type="checkbox"
+                  checked={state.referenceMode}
+                  onChange={(e) => patch({ referenceMode: e.target.checked })}
+                />
+                Линейка · реальный масштаб
+              </label>
+            </section>
+          )}
+          {kind === 'mat' && (
+            <RollControls
+              value={state.rollAmount}
+              onChange={(rollAmount) => {
+                setEditPrint(false);
+                patch({ rollAmount });
+              }}
+              disabled={!!busy}
+              resetKey={state.productId}
+              onPlayShowcase={onPlayShowcase}
+              onStopShowcase={onStopShowcase}
+            />
+          )}
           <section className="control-section">
             <h2>
-              <span>05</span> Камера
+              <span>06</span> Камера
             </h2>
             <div className="camera-buttons">
               {cameras.map(([id, label]) => (
@@ -510,7 +702,13 @@ export function App() {
                   aria-pressed={activeCamera === id}
                   onClick={() => preset(id)}
                 >
-                  {label}
+                  {isTextile(product) && id === 'top'
+                    ? 'Спереди'
+                    : isTextile(product) && id === 'underside'
+                      ? 'Сзади'
+                      : kind === 'mug' && id === 'underside'
+                        ? 'Со стороны ручки'
+                        : label}
                 </button>
               ))}
             </div>
@@ -520,7 +718,7 @@ export function App() {
                 checked={state.turntable}
                 onChange={(e) => patch({ turntable: e.target.checked })}
               />
-              Turntable · вращать коврик
+              Turntable · вращать продукт
             </label>
             <button
               className="text-button"
@@ -532,7 +730,7 @@ export function App() {
           </section>
           <section className="control-section">
             <h2>
-              <span>06</span> Экспорт
+              <span>07</span> Экспорт
             </h2>
             <label className="field-label">
               Разрешение PNG
@@ -554,9 +752,7 @@ export function App() {
       </main>
       <footer className="statusbar">
         <span role="status">
-          {busy ||
-            notice?.text ||
-            `${product.displayName} / ${product.widthMm} × ${product.heightMm} × ${state.thicknessMm} мм`}
+          {busy || notice?.text || `${product.displayName} / ${productSize}`}
         </span>
         <span>Studio Preview · sRGB · WebGL2</span>
       </footer>
@@ -580,6 +776,9 @@ export function App() {
       )}
       {settings && <Settings state={state} onChange={patch} onClose={() => setSettings(false)} />}
       {help && <Help onClose={() => setHelp(false)} />}
+      {photo && scene.current && (
+        <PhotoDialog scene={scene.current} onClose={() => setPhoto(false)} />
+      )}
       <input
         data-testid="image-input"
         ref={imageInput}

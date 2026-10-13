@@ -1,0 +1,17 @@
+{
+  "version": "0.2.2",
+  "shortcuts": [
+    {
+      "path": "C:\\Users\\alast\\OneDrive\\Рабочий стол\\MatVision Studio.lnk",
+      "target": "C:\\Users\\alast\\Documents\\Codex\\2026-09-15\\files-pasted-by-the-user-lead\\outputs\\MatVisionStudio-0.2.2\\MatVisionStudio.exe"
+    },
+    {
+      "path": "C:\\Users\\alast\\OneDrive\\Рабочий стол\\MatVision Studio 0.2 — товары.lnk",
+      "target": "C:\\Users\\alast\\Documents\\Codex\\2026-09-15\\files-pasted-by-the-user-lead\\outputs\\MatVisionStudio-0.2.2\\MatVisionStudio.exe"
+    }
+  ],
+  "portableExe": "C:\\Users\\alast\\Documents\\Codex\\2026-09-15\\files-pasted-by-the-user-lead\\outputs\\MatVisionStudio-0.2.2\\MatVisionStudio.exe",
+  "sha256": "14CE4931E2567B6B6A7941F2ACFB326C218E2C3902DFCAAF3E410091166B9DCB",
+  "nativeTest": "work/switch-performance/native-0.2.2.json",
+  "existingUserWindowsPreserved": true
+}

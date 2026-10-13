@@ -1,5 +1,8 @@
 import { MeshPhysicalMaterial, SRGBColorSpace } from 'three';
-import type { ProductDefinition } from '../contracts';
+import type { ProductDefinition, ProjectState } from '../contracts';
+import { createDefaultProject } from '../project';
+import { tileTextures, type MaterialTextures } from './assets';
+import { attachFineHeight } from './height';
 import { createDataMap } from './microtexture';
 const RUBBER_TILE_MM = 16;
 const SIZE = 512;
@@ -80,14 +83,23 @@ export function createRubberMaterial(product: ProductDefinition) {
     ior: 1.48,
   });
   material.name = 'MatVision fine embossed herringbone anti-slip rubber';
+  attachFineHeight(material);
   material.normalScale.setScalar(0.95);
   let disposed = false;
+  let imported: MaterialTextures = {};
   const controller = {
     material,
+    setMaps(maps: MaterialTextures) {
+      imported = maps;
+      material.needsUpdate = true;
+    },
     get ownedTextureBytes() {
       return disposed ? 0 : Math.ceil((SIZE * SIZE * 4 * 3 * 4) / 3);
     },
-    update(nextProduct: ProductDefinition) {
+    update(
+      nextProduct: ProductDefinition,
+      state: ProjectState = createDefaultProject(nextProduct.id),
+    ) {
       for (const texture of textures) {
         texture.repeat.set(
           nextProduct.widthMm / RUBBER_TILE_MM,
@@ -95,6 +107,17 @@ export function createRubberMaterial(product: ProductDefinition) {
         );
         texture.anisotropy = 8;
       }
+      tileTextures(imported, state.materials.rubber, nextProduct.widthMm, nextProduct.heightMm);
+      material.map = imported.color ?? color;
+      material.normalMap = imported.normal ?? normal;
+      material.roughnessMap = imported.roughness ?? roughness;
+      material.bumpMap = imported.height ?? null;
+      material.bumpScale = 0.00015 * state.realism.rubberRelief;
+      const strength = (imported.normal ? 0.6 : 0.95) * state.realism.rubberRelief;
+      material.normalScale.set(
+        strength,
+        imported.normal && state.materials.rubber.normalY === 'directx' ? -strength : strength,
+      );
     },
     dispose() {
       if (disposed) return;

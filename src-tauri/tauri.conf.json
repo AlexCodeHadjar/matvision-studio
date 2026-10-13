@@ -1,18 +1,19 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "MatVision Studio",
-  "version": "0.1.3",
+  "version": "0.3.0",
   "identifier": "studio.matvision.desktop",
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm build",
+    "beforeBuildCommand": "node scripts/build.mjs",
     "frontendDist": "../dist"
   },
   "app": {
     "windows": [
       {
         "label": "main",
+        "additionalBrowserArgs": "--force_high_performance_gpu",
         "title": "MatVision Studio",
         "width": 1440,
         "height": 960,
@@ -29,9 +30,10 @@
   },
   "bundle": {
     "active": true,
+    "resources": { "../docs/licenses/": "licenses/" },
     "targets": ["nsis"],
     "category": "GraphicsAndDesign",
-    "shortDescription": "Real-time 3D desk mat print visualization",
+    "shortDescription": "3D print visualization for desk mats, t-shirts and mugs",
     "icon": ["icons/icon.ico", "icons/icon.png"],
     "windows": {
       "webviewInstallMode": { "type": "downloadBootstrapper", "silent": true },

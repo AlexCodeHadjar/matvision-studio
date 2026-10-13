@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import type { PrintLayout, ProjectState, QualityPreset } from '../contracts';
 import { Modal } from './Modal';
+import { getProduct, productKind } from '../products';
 
 export function Slider({
   label,
@@ -76,7 +77,7 @@ export function PrintControls({
         onClick={onEdit}
         title="E — включить перетаскивание рисунка по поверхности"
       >
-        {edit ? '✓ Редактирование принта' : '↔ Двигать принт на коврике'}
+        {edit ? '✓ Редактирование принта' : '↔ Двигать принт на продукте'}
       </button>
       <Slider
         label="Масштаб"
@@ -123,28 +124,31 @@ export function MaterialControls({
   state: ProjectState;
   onChange: (patch: Partial<ProjectState>) => void;
 }) {
+  const kind = productKind(getProduct(state.productId));
   return (
     <section className="control-section">
       <h2>
         <span>02</span> Материал и свет
       </h2>
-      <label className="field-label">
-        Ткань
-        <select
-          aria-label="Материал"
-          value={state.materialPreset}
-          onChange={(e) =>
-            onChange({ materialPreset: e.target.value as ProjectState['materialPreset'] })
-          }
-        >
-          <option value="smooth-cloth">Smooth Cloth</option>
-          <option value="fine-weave">Fine Weave</option>
-          <option value="gaming-fabric">Gaming Fabric</option>
-        </select>
-      </label>
+      {kind === 'mat' && (
+        <label className="field-label">
+          Ткань
+          <select
+            aria-label="Материал"
+            value={state.materialPreset}
+            onChange={(e) =>
+              onChange({ materialPreset: e.target.value as ProjectState['materialPreset'] })
+            }
+          >
+            <option value="smooth-cloth">Smooth Cloth</option>
+            <option value="fine-weave">Fine Weave</option>
+            <option value="gaming-fabric">Gaming Fabric</option>
+          </select>
+        </label>
+      )}
       <Slider
         label="Шероховатость"
-        min={0.4}
+        min={0.05}
         max={1}
         value={state.roughness}
         onChange={(roughness) => onChange({ roughness })}
@@ -163,9 +167,9 @@ export function MaterialControls({
         </select>
       </label>
       <label className="field-label">
-        Поверхность под ковриком
+        {kind === 'mat' ? 'Поверхность под ковриком' : 'Поверхность под продуктом'}
         <select
-          aria-label="Поверхность под ковриком"
+          aria-label={kind === 'mat' ? 'Поверхность под ковриком' : 'Поверхность под продуктом'}
           value={state.placementSurface}
           onChange={(e) =>
             onChange({ placementSurface: e.target.value as ProjectState['placementSurface'] })

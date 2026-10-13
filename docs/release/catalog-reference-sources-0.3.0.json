@@ -1,0 +1,58 @@
+[
+  {
+    "file": "01_Худи_белый.png",
+    "page": "https://stantex.ru/product/hudi-uniseks-futer-s-nachyosom-260-belyj/",
+    "image": "https://stantex.ru/wp-content/uploads/2026/04/9241817d24bb68b547daa5ad84ba230a.png",
+    "width": 1000,
+    "height": 1000,
+    "sha256": "1403809653475b3e53fe58723d479121b0f42497dcdf7fed752ab9b29385bbe6"
+  },
+  {
+    "file": "02_Свитшот_белый.png",
+    "page": "https://stantex.ru/product/svitshot-uniseks-futer-bez-nachyosa-350-belyj/",
+    "image": "https://stantex.ru/wp-content/uploads/2026/04/96_10-_1_.png",
+    "width": 700,
+    "height": 700,
+    "sha256": "3293e6e7651d0ff4986858892f604eb561c54ce654fdb3fb05eaf2322072490d"
+  },
+  {
+    "file": "03_Шоппер_белый.jpg",
+    "page": "https://stantex.ru/product/sumka-shoper-200-belyj/",
+    "image": "https://stantex.ru/wp-content/uploads/2026/04/0309a1512862d67a65690ae82a3703e7.jpg",
+    "width": 1000,
+    "height": 1000,
+    "sha256": "cef02605e2a01413ba794864b36362229d54f2e29f039460362b8a37f011b600"
+  },
+  {
+    "file": "04_Лонгслив_белый.png",
+    "page": "https://stantex.ru/product/longsliv-hlopok-elastan-180-belyj/",
+    "image": "https://stantex.ru/wp-content/uploads/2026/04/35_10-_1_.png",
+    "width": 700,
+    "height": 700,
+    "sha256": "7cbf75f90129a711f834c6f77ca8354b509d5eefacc512c749240a0e02d557ca"
+  },
+  {
+    "file": "05_Поло_белый.png",
+    "page": "https://stantex.ru/product/rubashka-polo-uniseks-hlopok-100-185-belyj/",
+    "image": "https://stantex.ru/wp-content/uploads/2026/04/88238aea8b5e851dcc6077816a33ca4b.png",
+    "width": 1000,
+    "height": 1000,
+    "sha256": "b3d0deb4e1e14dea3b2f851cef7bf057081c087c76320088e92b82434af4b330"
+  },
+  {
+    "file": "06_Бейсболка_белый.png",
+    "page": "https://stantex.ru/product/bejsbolka-5-klinev-hlopok-280-belyj-2/",
+    "image": "https://stantex.ru/wp-content/uploads/2026/04/de300713453cf637300749ec16753c09.png",
+    "width": 1000,
+    "height": 1000,
+    "sha256": "9a496c1c3a57e35d44b124587e48e3ba24740312ba30b2655b176a1ad69a71b6"
+  },
+  {
+    "file": "07_Фартук_белый.jpg",
+    "page": "https://komus-reklama.ru/product/fartuk-ducasse-belyy/",
+    "image": "https://komus-reklama.ru/upload/iblock/3ac/93z1qe63kyqhmvatd7vquxg5egf6b1wi/fartuk_ducasse_belyy.jpg",
+    "width": 1000,
+    "height": 750,
+    "sha256": "6c1b474abe34f80a9e8ab5b4253ae858c9f13dd21a8a4a03b2abcd39695b866f"
+  }
+]

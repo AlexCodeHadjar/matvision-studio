@@ -24,6 +24,9 @@ export function presetOrbit(
     case 'close-up':
       direction = new Vector3(0.35, 0.4, 1);
       break;
+    case 'macro':
+      direction = new Vector3(0.35, 0.65, 1);
+      break;
     case 'underside':
       direction = new Vector3(0.5, -1, 0.6);
       break;
@@ -49,7 +52,11 @@ export function presetOrbit(
         );
       }
   distance =
-    preset === 'close-up' ? Math.max(0.08, Math.max(width, height) * 0.26) : distance * 1.2;
+    preset === 'macro'
+      ? 0.085
+      : preset === 'close-up'
+        ? Math.max(0.08, Math.max(width, height) * 0.26)
+        : distance * 1.2;
   return new Spherical().setFromVector3(direction.multiplyScalar(distance));
 }
 

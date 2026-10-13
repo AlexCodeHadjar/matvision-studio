@@ -11,10 +11,50 @@ export const PLACEMENT_SURFACES: readonly PlacementSurface[] = [
   'walnut',
   'concrete',
 ];
-export type CameraPreset = 'top' | 'perspective' | 'low-angle' | 'close-up' | 'underside';
+export type CameraPreset = 'top' | 'perspective' | 'low-angle' | 'close-up' | 'macro' | 'underside';
 export type QualityPreset = 'low' | 'balanced' | 'high' | 'ultra';
+export type MaterialTarget = 'fabric' | 'rubber';
+export type MaterialMapKind = 'color' | 'normal' | 'roughness' | 'height';
+export interface MaterialAssets {
+  tileMm: number;
+  normalY: 'opengl' | 'directx';
+  maps: Partial<Record<MaterialMapKind, PrintSource>>;
+}
+export interface RealismSettings {
+  mode: 'fast' | 'detailed';
+  contactShadow: number;
+  weaveScale: number;
+  relief: number;
+  sheen: number;
+  rubberRelief: number;
+}
 export type FitMode = 'cover' | 'contain' | 'stretch';
+export type ProductKind =
+  | 'mat'
+  | 'tshirt'
+  | 'mug'
+  | 'hoodie'
+  | 'sweatshirt'
+  | 'tote'
+  | 'longsleeve'
+  | 'polo'
+  | 'cap'
+  | 'apron';
+export type PrintSide = 'front' | 'back';
+export interface SidePrint {
+  source: PrintSource | null;
+  layout: PrintLayout;
+}
 export type Vector3Tuple = [number, number, number];
+export type ShowcaseAnimation =
+  | 'corner-lift'
+  | 'soft-wave'
+  | 'table-drop'
+  | 'mat-flip'
+  | 'dual-roll'
+  | 'edge-flyby'
+  | 'moving-light'
+  | 'layer-reveal';
 
 /** Rectangle measured from the product's top-left corner, before rounded-corner clipping. */
 export interface PrintableArea {
@@ -32,6 +72,11 @@ export interface CameraFraming {
 }
 
 export interface ProductDefinition {
+  kind?: ProductKind;
+  description?: string;
+  sourceUrl?: string;
+  backPrintableArea?: PrintableArea;
+  mugDiameterMm?: number;
   id: string;
   displayName: string;
   widthMm: number;
@@ -89,6 +134,9 @@ export interface CalibratedMaterialProfile {
 
 export interface ProjectState {
   productId: string;
+  printSide?: PrintSide;
+  sidePrints?: Partial<Record<PrintSide, SidePrint>>;
+  productColor?: string;
   thicknessMm: number;
   edgePreset: EdgePreset;
   materialPreset: MaterialPreset;
@@ -104,11 +152,13 @@ export interface ProjectState {
   turntable: boolean;
   referenceMode: boolean;
   materialProfile: CalibratedMaterialProfile;
+  realism: RealismSettings;
+  materials: Record<MaterialTarget, MaterialAssets>;
 }
 
 export interface ProjectDocument {
   format: 'matvision-project';
-  version: 1;
+  version: 2;
   state: ProjectState;
 }
 
@@ -139,6 +189,10 @@ export interface SceneController {
   /** Invalidate in-flight imports before validating a newer file; preserve committed artwork. */
   cancelPendingPrint(): void;
   setCameraPreset(preset: CameraPreset): void;
+  /** Play a transient material demonstration without changing the saved project state. */
+  playShowcase(animation: ShowcaseAnimation): void;
+  /** Stop a transient demonstration and restore the exact project pose. */
+  stopShowcase(): void;
   getCameraState(): CameraState;
   exportPng(options: ExportOptions): Promise<Blob>;
   getDiagnostics(): SceneDiagnostics;

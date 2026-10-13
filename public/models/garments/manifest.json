@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "sourceHash": "11e560baac7f1593d78cd8cf19b2f8e65ca563dd090943f0efbb0701a9c255b1",
+  "buildHash": "7ac6ffc582a269fc6950d2761e5314f11459ff0b67e34e0e1b672d392ed83a72",
+  "optimizer": "meshoptimizer 1.1.1",
+  "models": [
+    {
+      "id": "tshirt-gildan-5000",
+      "beforeTriangles": 2039152,
+      "afterTriangles": 352748,
+      "errorMetricMetres": {
+        "front": 0.00007992141763679683,
+        "back": 0.00007990255835466087
+      },
+      "bytes": 5387233,
+      "decodedBytes": 10724060,
+      "sha256": "651dd413c776f2d190c3c6813a2e44fcdd295307e26cd8e1aa1223268b6c4879",
+      "elapsedMs": 35663.341700000004
+    },
+    {
+      "id": "tshirt-bella-3001",
+      "beforeTriangles": 2036076,
+      "afterTriangles": 334968,
+      "errorMetricMetres": {
+        "front": 0.00007917491893749684,
+        "back": 0.00007889418338891119
+      },
+      "bytes": 5103417,
+      "decodedBytes": 10198412,
+      "sha256": "e38b68228b62ea7afbad96624aebdd99b2467bca176cb7fe4014d932a50df9e0",
+      "elapsedMs": 34328.8753
+    }
+  ]
+}

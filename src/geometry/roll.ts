@@ -1,4 +1,5 @@
 import { BufferAttribute, BufferGeometry, DynamicDrawUsage, InstancedMesh } from 'three';
+import type { ShowcaseAnimation } from '../contracts';
 
 interface RestGeometry {
   geometry: BufferGeometry;
@@ -73,6 +74,118 @@ export class MatRollDeformer {
   addThreads(mesh: InstancedMesh) {
     mesh.instanceMatrix.setUsage(DynamicDrawUsage);
     this.threads = { mesh, matrices: new Float32Array(mesh.instanceMatrix.array) };
+  }
+  private applyPositionMap(
+    map: (x: number, y: number, z: number) => readonly [number, number, number],
+  ) {
+    for (const rest of this.meshes) {
+      const position = rest.geometry.getAttribute('position') as BufferAttribute;
+      for (let i = 0; i < rest.positions.length; i += 3) {
+        const [x, y, z] = map(rest.positions[i]!, rest.positions[i + 1]!, rest.positions[i + 2]!);
+        position.setXYZ(i / 3, x, y, z);
+      }
+      position.needsUpdate = true;
+      // Transient showcase bends are smooth displacement fields. Rebuilding their
+      // normals is inexpensive and keeps fabric highlights attached to the surface.
+      rest.geometry.computeVertexNormals();
+      rest.geometry.computeBoundingBox();
+      rest.geometry.computeBoundingSphere();
+    }
+    if (this.threads) {
+      const { mesh, matrices } = this.threads;
+      mesh.instanceMatrix.array.set(matrices);
+      const output = mesh.instanceMatrix.array;
+      for (let i = 0; i < matrices.length; i += 16) {
+        const [x, y, z] = map(matrices[i + 12]!, matrices[i + 13]!, matrices[i + 14]!);
+        // Apply the local derivative to every basis vector: loops follow the bend.
+        const epsilon = 0.00001;
+        for (const column of [0, 4, 8]) {
+          const point = map(
+            matrices[i + 12]! + epsilon * matrices[i + column]!,
+            matrices[i + 13]! + epsilon * matrices[i + column + 1]!,
+            matrices[i + 14]! + epsilon * matrices[i + column + 2]!,
+          );
+          output[i + column] = (point[0] - x) / epsilon;
+          output[i + column + 1] = (point[1] - y) / epsilon;
+          output[i + column + 2] = (point[2] - z) / epsilon;
+        }
+        output[i + 12] = x;
+        output[i + 13] = y;
+        output[i + 14] = z;
+      }
+      mesh.instanceMatrix.needsUpdate = true;
+    }
+  }
+  applyShowcase(
+    width: number,
+    height: number,
+    thickness: number,
+    animation: ShowcaseAnimation,
+    progress: number,
+    stitched: boolean,
+  ) {
+    const p = Math.max(0, Math.min(1, progress));
+    if (animation === 'dual-roll') {
+      const amount = 0.7 * Math.sin(Math.PI * p) ** 2;
+      const sideHeight = height / 2;
+      const { frame, mid } = createRollMapping(sideHeight, thickness, amount, stitched);
+      this.applyPositionMap((x, y, z) => {
+        const sign = z < 0 ? -1 : 1;
+        const localZ = sideHeight / 2 - Math.abs(z);
+        const [cy, cz, c, s] = frame(localZ);
+        return [x, cy + (y - mid) * c, sign * (sideHeight / 2 - (cz + (y - mid) * s))];
+      });
+      return;
+    }
+    if (animation === 'corner-lift') {
+      const amount = Math.sin(Math.PI * p) ** 2;
+      const reach = Math.min(width * 0.32, height * 0.5);
+      const curvature = (1.85 * amount) / reach;
+      const mid = thickness / 2;
+      this.applyPositionMap((x, y, z) => {
+        const distance = (x + width / 2 + height / 2 - z) * Math.SQRT1_2;
+        const length = Math.max(0, reach - distance);
+        if (length === 0 || curvature < 1e-8) return [x, y, z];
+        const angle = length * curvature;
+        const c = Math.cos(angle),
+          sn = Math.sin(angle);
+        const inset = length - sn / curvature + (y - mid) * sn;
+        return [
+          x + inset * Math.SQRT1_2,
+          mid + (1 - c) / curvature + (y - mid) * c,
+          z - inset * Math.SQRT1_2,
+        ];
+      });
+      return;
+    }
+    if (animation === 'soft-wave') {
+      const center = -height * 0.65 + p * height * 1.3;
+      const sigma = Math.max(0.025, height * 0.12);
+      this.applyPositionMap((x, y, z) => {
+        const ridge = Math.exp(-((z - center) ** 2) / (2 * sigma * sigma));
+        const edgeFade = Math.max(0, 1 - (Math.abs(x) / (width / 2)) ** 6);
+        return [
+          x,
+          y + ridge * edgeFade * Math.sin(Math.PI * p) ** 2 * Math.min(0.035, height * 0.09),
+          z,
+        ];
+      });
+      return;
+    }
+    if (animation === 'table-drop') {
+      // A moving contact line leaves the landed portion flat on the table.
+      const ease = (v: number) => v * v * (3 - 2 * v);
+      const lift = p < 0.22 ? ease(p / 0.22) : 1;
+      const contact = p < 0.4 ? 0 : ease(Math.min(1, (p - 0.4) / 0.6));
+      const altitude = 0.035 * (1 - ease(Math.max(0, Math.min(1, (p - 0.22) / 0.18))));
+      this.applyPositionMap((x, y, z) => {
+        const u = (z + height / 2) / height;
+        const free = Math.max(0, (u - contact) / Math.max(1e-6, 1 - contact));
+        return [x, y + lift * (altitude + (1 - contact) * height * 0.38 * free * free), z];
+      });
+      return;
+    }
+    this.apply(height, thickness, 0, stitched);
   }
   apply(height: number, thickness: number, amount: number, stitched: boolean) {
     const { frame, mid } = createRollMapping(height, thickness, amount, stitched);

@@ -6,13 +6,30 @@ import type {
   ProjectDocument,
   ProjectState,
   Vector3Tuple,
+  MaterialAssets,
+  RealismSettings,
 } from '../contracts';
-import { getProduct } from '../products';
+import { getProduct, productKind } from '../products';
 import { PLACEMENT_SURFACES } from '../contracts';
 
 export const PROJECT_FORMAT = 'matvision-project' as const;
-export const PROJECT_VERSION = 1 as const;
+export const PROJECT_VERSION = 2 as const;
 export const MAX_PROJECT_CHARACTERS = 256 * 1024 * 1024;
+export const MAX_MATERIAL_BYTES = 8 * 1024 * 1024;
+
+export function createDefaultRealism(): RealismSettings {
+  return {
+    mode: 'detailed',
+    contactShadow: 0.7,
+    weaveScale: 1,
+    relief: 1,
+    sheen: 1,
+    rubberRelief: 1,
+  };
+}
+export function createDefaultMaterialAssets(tileMm = 100): MaterialAssets {
+  return { tileMm, normalY: 'opengl', maps: {} };
+}
 
 export function createDefaultLayout(): PrintLayout {
   return { mode: 'cover', scale: 1, offsetX: 0, offsetY: 0, rotationDeg: 0 };
@@ -35,14 +52,20 @@ export function createDefaultProject(productId = 'deskmat-900x400'): ProjectStat
   const product = getProduct(productId);
   return {
     productId,
+    printSide: 'front',
+    sidePrints: {},
+    productColor: ['hoodie', 'sweatshirt', 'longsleeve'].includes(productKind(product)) ? '#fafafa' : '#f4f3ee',
     thicknessMm: product.thicknessMm,
     edgePreset: product.edgePreset,
     materialPreset: product.surfaceMaterialPreset,
-    roughness: 0.88,
+    roughness: productKind(product) === 'mug' ? 0.16 : 0.88,
     environment: 'neutral-studio',
     placementSurface: 'studio',
     rollAmount: 0,
-    layout: createDefaultLayout(),
+    layout: {
+      ...createDefaultLayout(),
+      mode: productKind(product) === 'mat' ? 'cover' : 'contain',
+    },
     source: null,
     camera: {
       preset: 'perspective',
@@ -50,10 +73,12 @@ export function createDefaultProject(productId = 'deskmat-900x400'): ProjectStat
       target: [...product.defaultCameraFraming.target],
       fovDeg: product.defaultCameraFraming.fovDeg,
     },
-    quality: 'balanced',
+    quality: 'ultra',
     turntable: false,
     referenceMode: false,
     materialProfile: createDefaultMaterialProfile(),
+    realism: createDefaultRealism(),
+    materials: { fabric: createDefaultMaterialAssets(), rubber: createDefaultMaterialAssets() },
   };
 }
 
@@ -122,7 +147,7 @@ function camera(value: unknown): CameraState {
   return {
     preset: option(
       input.preset,
-      ['top', 'perspective', 'low-angle', 'close-up', 'underside'],
+      ['top', 'perspective', 'low-angle', 'close-up', 'macro', 'underside'],
       'camera preset',
     ),
     position,
@@ -171,13 +196,66 @@ function profile(value: unknown): CalibratedMaterialProfile {
   };
 }
 
+export function validateMaterialAssets(value: unknown): MaterialAssets {
+  const input = record(value, 'material');
+  const maps = record(input.maps, 'material maps');
+  const result: MaterialAssets = {
+    tileMm: number(input.tileMm, 'material tile in mm', 0.1, 2000),
+    normalY: option(input.normalY, ['opengl', 'directx'], 'normal map convention'),
+    maps: {},
+  };
+  for (const kind of ['color', 'normal', 'roughness', 'height'] as const) {
+    if (maps[kind] === undefined) continue;
+    const image = source(maps[kind]);
+    if (!image) throw new TypeError('Empty material map.');
+    const payload = image.dataUrl.slice(image.dataUrl.indexOf(',') + 1);
+    const byteLength =
+      (payload.length / 4) * 3 - (payload.endsWith('==') ? 2 : payload.endsWith('=') ? 1 : 0);
+    if (byteLength > MAX_MATERIAL_BYTES) throw new RangeError('Карта материала превышает 8 МиБ.');
+    if (image.widthPx * image.heightPx > 16 * 1024 * 1024)
+      throw new RangeError('Карта материала превышает 16 мегапикселей.');
+    result.maps[kind] = image;
+  }
+  return result;
+}
+
+function realism(value: unknown): RealismSettings {
+  if (value === undefined) return createDefaultRealism();
+  const input = record(value, 'realism');
+  return {
+    mode: option(input.mode, ['fast', 'detailed'], 'render mode'),
+    contactShadow: number(input.contactShadow, 'contact shadow', 0, 2),
+    weaveScale: number(input.weaveScale, 'weave scale', 0.25, 4),
+    relief: number(input.relief, 'cloth relief', 0, 3),
+    sheen: number(input.sheen, 'cloth sheen', 0, 2),
+    rubberRelief: number(input.rubberRelief, 'rubber relief', 0, 3),
+  };
+}
+
 /** Validate an untrusted file and return a fresh state containing only known fields. */
 export function validateProjectState(value: unknown): ProjectState {
   const input = record(value, 'project state');
   const productId = string(input.productId, 'product id');
   getProduct(productId);
+  const sides = input.sidePrints === undefined ? {} : record(input.sidePrints, 'side prints');
+  const sidePrints: ProjectState['sidePrints'] = {};
+  for (const side of ['front', 'back'] as const) {
+    if (sides[side] !== undefined) {
+      const entry = record(sides[side], `${side} print`);
+      sidePrints[side] = { source: source(entry.source), layout: layout(entry.layout) };
+    }
+  }
+  const productColor =
+    input.productColor === undefined ? '#f4f3ee' : string(input.productColor, 'product color', 7);
+  if (!/^#[0-9a-fA-F]{6}$/.test(productColor)) throw new TypeError('Invalid product color.');
   return {
     productId,
+    printSide:
+      input.printSide === undefined
+        ? 'front'
+        : option(input.printSide, ['front', 'back'] as const, 'print side'),
+    sidePrints,
+    productColor,
     thicknessMm: number(input.thicknessMm, 'thickness', 0.5, 20),
     edgePreset: option(input.edgePreset, ['standard-cut', 'stitched'], 'edge preset'),
     materialPreset: option(
@@ -205,6 +283,14 @@ export function validateProjectState(value: unknown): ProjectState {
     turntable: boolean(input.turntable, 'turntable'),
     referenceMode: boolean(input.referenceMode, 'reference mode'),
     materialProfile: profile(input.materialProfile),
+    realism: realism(input.realism),
+    materials:
+      input.materials === undefined
+        ? { fabric: createDefaultMaterialAssets(), rubber: createDefaultMaterialAssets() }
+        : {
+            fabric: validateMaterialAssets(record(input.materials, 'materials').fabric),
+            rubber: validateMaterialAssets(record(input.materials, 'materials').rubber),
+          },
   };
 }
 
@@ -212,7 +298,7 @@ export function validateProjectState(value: unknown): ProjectState {
 export function migrateProject(value: unknown): ProjectDocument {
   const input = record(value, 'project document');
   if (input.format !== PROJECT_FORMAT) throw new TypeError('This file is not a MatVision project.');
-  if (input.version === PROJECT_VERSION) {
+  if (input.version === PROJECT_VERSION || input.version === 1) {
     return {
       format: PROJECT_FORMAT,
       version: PROJECT_VERSION,

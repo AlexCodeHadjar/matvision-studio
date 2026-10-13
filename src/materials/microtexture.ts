@@ -25,14 +25,16 @@ const TAU = Math.PI * 2;
 
 /** Periodic crossed yarns with alternating over/under crossings. No artwork pixels are involved. */
 function fabricHeight(u: number, v: number, preset: MaterialPreset): number {
-  const x = u * 8;
-  const y = v * 8;
+  // Periodic, deterministic yarn waviness avoids a perfectly machined grid.
+  const x = u * 8 + 0.035 * Math.sin(TAU * v * 3) + 0.018 * Math.sin(TAU * v * 7);
+  const y = v * 8 + 0.032 * Math.sin(TAU * u * 2) + 0.017 * Math.cos(TAU * u * 5);
   const warp = Math.pow(0.5 + 0.5 * Math.cos(TAU * x), 1.5);
   const weft = Math.pow(0.5 + 0.5 * Math.cos(TAU * y), 1.5);
   const crossing = Math.cos(Math.PI * x) * Math.cos(Math.PI * y);
   const twill = preset === 'gaming-fabric' ? 0.08 * Math.cos(TAU * (u + v) * 8) : 0;
   const yarnFilaments = 0.025 * Math.cos(TAU * u * 32) * Math.cos(TAU * v * 32);
-  return 0.4 * (warp + weft) + 0.18 * crossing * (warp - weft) + twill + yarnFilaments;
+  const density = 1 + 0.04 * Math.sin(TAU * u * 3) * Math.cos(TAU * v * 5);
+  return density * (0.4 * (warp + weft) + 0.18 * crossing * (warp - weft)) + twill + yarnFilaments;
 }
 
 /** CPU arrays are retained so Three can upload them again after WebGL context restoration. */

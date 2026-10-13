@@ -1,0 +1,606 @@
+import {
+  BufferGeometry,
+  CatmullRomCurve3,
+  Float32BufferAttribute,
+  SphereGeometry,
+  TubeGeometry,
+  Vector3,
+} from 'three';
+import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
+import type { ProductDefinition } from '../contracts';
+import type { CatalogGeometry } from './catalog';
+
+const TAU = Math.PI * 2;
+const clamp = (t: number, a = 0, b = 1) => Math.max(a, Math.min(b, t));
+const smooth = (a: number, b: number, t: number) => {
+  const v = clamp((t - a) / (b - a));
+  return v * v * (3 - 2 * v);
+};
+const bell = (t: number, w: number) => Math.exp(-((t / w) ** 2));
+const vec = (p: number[]) => new Vector3(p[0]!, p[1]!, p[2]!);
+
+function geometry(p: number[], uv: number[], ix: number[]) {
+  const g = new BufferGeometry();
+  g.setAttribute('position', new Float32BufferAttribute(p, 3));
+  g.setAttribute('uv', new Float32BufferAttribute(uv, 2));
+  g.setIndex(ix);
+  g.computeVertexNormals();
+  return g;
+}
+
+function merge(parts: BufferGeometry[]) {
+  const result = mergeGeometries(parts, false)!;
+  parts.forEach((p) => p.dispose());
+  return result;
+}
+
+function reverse(g: BufferGeometry) {
+  const ix = g.index!,
+    n = g.getAttribute('normal');
+  for (let i = 0; i < ix.count; i += 3) {
+    const a = ix.getX(i);
+    ix.setX(i, ix.getX(i + 2));
+    ix.setX(i + 2, a);
+  }
+  for (let i = 0; i < n.count; i++) n.setXYZ(i, -n.getX(i), -n.getY(i), -n.getZ(i));
+  return g;
+}
+
+function lining(g: BufferGeometry, thickness: number) {
+  const result = g.clone(),
+    p = result.getAttribute('position'),
+    n = result.getAttribute('normal');
+  for (let i = 0; i < p.count; i++)
+    p.setXYZ(
+      i,
+      p.getX(i) - n.getX(i) * thickness,
+      p.getY(i) - n.getY(i) * thickness,
+      p.getZ(i) - n.getZ(i) * thickness,
+    );
+  return reverse(result);
+}
+
+function grid(
+  nu: number,
+  nv: number,
+  at: (u: number, v: number) => Vector3,
+  uvAt: (p: Vector3, u: number, v: number) => number[] = (_p, u, v) => [u, v],
+  flip = false,
+) {
+  const p: number[] = [],
+    uv: number[] = [],
+    ix: number[] = [];
+  for (let j = 0; j <= nv; j++)
+    for (let i = 0; i <= nu; i++) {
+      const u = i / nu,
+        v = j / nv,
+        a = at(u, v);
+      p.push(a.x, a.y, a.z);
+      uv.push(...uvAt(a, u, v));
+    }
+  for (let j = 0; j < nv; j++)
+    for (let i = 0; i < nu; i++) {
+      const a = j * (nu + 1) + i,
+        b = a + 1,
+        c = a + nu + 1;
+      ix.push(a, b, c, b, c + 1, c);
+    }
+  const result = geometry(p, uv, ix);
+  const n = result.getAttribute('normal');
+  // Derivatives avoid diagonal shading in soft fabric, including uneven grids.
+  for (let j = 0; j <= nv; j++)
+    for (let i = 0; i <= nu; i++) {
+      const u = i / nu,
+        v = j / nv,
+        e = 0.00001;
+      const du = at(Math.min(1, u + e), v).sub(at(Math.max(0, u - e), v));
+      const dv = at(u, Math.min(1, v + e)).sub(at(u, Math.max(0, v - e)));
+      const normal = du.cross(dv).normalize();
+      if (normal.lengthSq() > 0.5) n.setXYZ(j * (nu + 1) + i, normal.x, normal.y, normal.z);
+    }
+  return flip ? reverse(result) : result;
+}
+
+function thread(points: Vector3[], radius = 0.00024, segments = 100, closed = false) {
+  const distinct = points.filter((p, i) => i === 0 || p.distanceToSquared(points[i - 1]!) > 1e-12);
+  if (closed && distinct.length > 2 && distinct[0]!.distanceToSquared(distinct.at(-1)!) < 1e-12)
+    distinct.pop();
+  return new TubeGeometry(
+    new CatmullRomCurve3(distinct, closed, 'centripetal'),
+    segments,
+    radius,
+    6,
+    closed,
+  );
+}
+
+function stitches(at: (t: number) => Vector3, count: number, radius = 0.00016) {
+  const parts: BufferGeometry[] = [];
+  for (let i = 0; i < count; i++)
+    parts.push(thread([at((i + 0.13) / count), at((i + 0.76) / count)], radius, 2));
+  return merge(parts);
+}
+
+/** Two sewn cloth faces, with a rounded thin edge and a gently twisting frame. */
+function strap(points: number[][], width: number, thickness = 0.0012, twist = 0.1) {
+  const path = new CatmullRomCurve3(points.map(vec), false, 'centripetal');
+  const frame = (u: number) => {
+    const center = path.getPointAt(u),
+      tangent = path.getTangentAt(u);
+    const across = new Vector3(tangent.y, -tangent.x, 0).normalize();
+    if (across.lengthSq() < 0.5) across.set(1, 0, 0);
+    const face = tangent.clone().cross(across).normalize();
+    const angle = twist * Math.sin(Math.PI * u) * Math.sin(5 * u + 0.35);
+    across.applyAxisAngle(tangent, angle);
+    face.applyAxisAngle(tangent, angle);
+    return { center, across, face };
+  };
+  const point = (u: number, across: number, face: number) => {
+    const f = frame(u);
+    return f.center.addScaledVector(f.across, across).addScaledVector(f.face, face);
+  };
+  const at = (u: number, v: number) => {
+    const a = v * TAU,
+      c = Math.cos(a),
+      s = Math.sin(a);
+    // Superellipse: broad, flat webbing faces and a softened folded edge.
+    return point(
+      u,
+      (Math.sign(c) * Math.abs(c) ** 0.32 * width) / 2,
+      (Math.sign(s) * Math.abs(s) ** 0.72 * thickness) / 2,
+    );
+  };
+  const parts = [grid(160, 20, at, undefined, true)];
+  for (const edge of [-1, 1])
+    parts.push(
+      stitches((t) => point(t, edge * (width / 2 - 0.0017), -thickness * 0.55), 110, 0.00012),
+    );
+  for (const u of [0, 1])
+    parts.push(
+      grid(8, 3, (a, b) => point(u, (a - 0.5) * width, (b - 0.5) * thickness), undefined, u === 0),
+    );
+  return merge(parts);
+}
+
+function printUV(product: ProductDefinition, sign = 1) {
+  return (p: Vector3) => [
+    0.5 + (sign * p.x) / (product.widthMm / 1000),
+    p.y / (product.heightMm / 1000),
+  ];
+}
+
+function tote(product: ProductDefinition): CatalogGeometry {
+  const details: BufferGeometry[] = [],
+    inner: BufferGeometry[] = [],
+    faces: BufferGeometry[] = [];
+  const at = (u: number, v: number, sign: number) => {
+    const angle = (u - 0.5) * Math.PI,
+      q = Math.sin(angle),
+      c = Math.max(0, Math.cos(angle));
+    const width = 0.188 + 0.004 * Math.sin(Math.PI * v) - 0.005 * bell(v - 0.04, 0.07);
+    const x = width * q + 0.0018 * Math.sin(v * 7) * c;
+    const bottom = 0.025 + 0.005 * bell(q + 0.87, 0.2) - 0.004 * bell(q - 0.78, 0.18);
+    const y =
+      bottom +
+      0.395 * v -
+      (0.009 * c + 0.004 * bell(q + 0.32, 0.33)) * v ** 8 +
+      0.0016 * Math.sin(q * 8) * (1 - v) ** 6;
+    const seal = Math.sqrt(smooth(0, 0.14, v));
+    const volume = (0.023 + 0.008 * Math.sin(v * Math.PI)) * seal;
+    const lowFold =
+      (0.006 * bell(q + 0.81 + 0.06 * v, 0.11) - 0.007 * bell(q - 0.78 + 0.17 * v, 0.13)) *
+      bell(v - 0.1, 0.105);
+    const sideFold =
+      -0.0032 * bell(q - 0.83 + 0.035 * Math.sin(v * 10), 0.085) * smooth(0.15, 0.35, v);
+    const tension =
+      0.0026 * Math.sin(q * 23 + sign) * (bell(q + 0.45, 0.19) + bell(q - 0.44, 0.16)) * v ** 6;
+    const drape =
+      (0.005 * bell(q + 0.22 - 0.12 * v, 0.14) - 0.004 * bell(q - 0.13 + 0.05 * v, 0.10)) *
+      bell(v - 0.19, 0.23) +
+      0.003 * bell(q - 0.66 + 0.21 * v, 0.09) * bell(v - 0.52, 0.36);
+    const z =
+      sign * (volume * c ** 0.66 + (lowFold + sideFold + tension + drape) * c * seal) +
+      0.0018 * c * Math.sin(q * 5 + v * 4 + sign) * seal;
+    return new Vector3(x, y, z);
+  };
+  const uForX = (x: number) => 0.5 + Math.asin(clamp(x / 0.19, -1, 1)) / Math.PI;
+  for (const sign of [1, -1]) {
+    const face = grid(140, 144, (u, v) => at(u, v, sign), printUV(product, sign), sign < 0);
+    faces.push(face);
+    inner.push(lining(face, 0.00105));
+    // A real turned top hem wraps over the edge into the open bag.
+    const hem = grid(
+      120,
+      14,
+      (u, v) => {
+        const p = at(u, 0.968 + 0.032 * v, sign);
+        p.z += sign * (0.00065 + 0.0007 * Math.sin(Math.PI * v));
+        return p;
+      },
+      undefined,
+      sign < 0,
+    );
+    details.push(hem, lining(hem, 0.001));
+    details.push(
+      thread(
+        Array.from({ length: 121 }, (_, i) => at(i / 120, 1, sign)),
+        0.00085,
+        180,
+      ),
+    );
+    details.push(
+      stitches((t) => at(t, 0.974, sign).add(new Vector3(0, 0, sign * 0.001)), 160, 0.00015),
+    );
+    const left = at(uForX(-0.087), 0.958, sign),
+      right = at(uForX(0.088), 0.96, sign);
+    const pts =
+      sign > 0
+        ? [
+            left.toArray(),
+            [-0.085, 0.457, 0.041],
+            [-0.061, 0.564, 0.027],
+            [-0.04, 0.686, 0.003],
+            [-0.025, 0.713, -0.005],
+            [0.002, 0.724, -0.007],
+            [0.03, 0.711, -0.003],
+            [0.045, 0.684, 0.009],
+            [0.051, 0.605, 0.026],
+            [0.078, 0.484, 0.039],
+            right.toArray(),
+          ]
+        : [
+            left.toArray(),
+            [-0.078, 0.472, -0.043],
+            [-0.038, 0.597, -0.058],
+            [-0.02, 0.687, -0.063],
+            [-0.008, 0.707, -0.064],
+            [0.017, 0.718, -0.062],
+            [0.043, 0.707, -0.058],
+            [0.059, 0.684, -0.054],
+            [0.057, 0.656, -0.049],
+            [0.083, 0.546, -0.038],
+            [0.087, 0.444, -0.032],
+            right.toArray(),
+          ];
+    details.push(strap(pts, 0.024, 0.0016, sign > 0 ? 0.19 : -0.28));
+    for (const x of [-0.087, 0.088]) {
+      const surface = (dx: number, v: number) =>
+        at(uForX(x + dx), 0.925 + 0.071 * v, sign).add(new Vector3(0, 0, sign * 0.00135));
+      details.push(grid(12, 16, (u, v) => surface((u - 0.5) * 0.025, v), undefined, sign < 0));
+      for (const side of [-1, 1])
+        details.push(stitches((t) => surface(side * 0.0095, t * 0.82 + 0.07), 10));
+      details.push(stitches((t) => surface(-0.0095 + 0.019 * t, 0.08 + 0.8 * t), 12));
+      details.push(stitches((t) => surface(0.0095 - 0.019 * t, 0.08 + 0.8 * t), 12));
+    }
+  }
+  for (const u of [0, 1])
+    details.push(
+      thread(
+        Array.from({ length: 101 }, (_, i) => at(u, i / 100, 1)),
+        0.0008,
+        160,
+      ),
+    );
+  details.push(
+    thread(
+      Array.from({ length: 121 }, (_, i) => at(i / 120, 0, 1)),
+      0.001,
+      180,
+    ),
+  );
+  // The bottom joins at its sewn line; the unsealed top is bounded by two
+  // separate walls and their inward-facing liners, never by a filled lid.
+  return { front: faces[0]!, back: faces[1]!, details: merge(details), lining: merge(inner) };
+}
+
+function apron(product: ProductDefinition): CatalogGeometry {
+  const details: BufferGeometry[] = [];
+  const body = (x: number, y: number) => {
+    const lower = 1 - smooth(0.48, 0.77, y);
+    return new Vector3(
+      x,
+      y,
+      0.014 -
+        0.012 * (x / 0.2) ** 2 +
+        lower *
+          (0.009 * bell(x + 0.102 - 0.013 * y, 0.039) -
+            0.006 * bell(x - 0.065 + 0.012 * y, 0.035) +
+            0.003 * bell(x - 0.145, 0.017)) +
+        0.004 * bell(y - 0.58, 0.045) * bell(Math.abs(x) - 0.147, 0.04) +
+        0.0015 * Math.sin(x * 18 + y * 8) * bell(y - 0.2, 0.24),
+    );
+  };
+  const halfWidth = (v: number) =>
+    0.126 + 0.044 * (1 - smooth(0.59, 0.82, v)) + 0.017 * (1 - smooth(0.02, 0.59, v));
+  const at = (u: number, v: number) => {
+    const y = 0.025 + 0.816 * v,
+      q = u * 2 - 1;
+    return body(
+      q * halfWidth(y),
+      y + 0.003 * (1 - q * q) * (1 - v) ** 12 - 0.0025 * q * (1 - v) ** 5,
+    );
+  };
+  const front = grid(110, 200, at, printUV(product));
+  const back = lining(front, 0.0011),
+    backUV = back.getAttribute('uv');
+  for (let i = 0; i < backUV.count; i++) backUV.setX(i, 1 - backUV.getX(i));
+  const boundary = [
+    ...Array.from({ length: 81 }, (_, i) => at(i / 80, 0)),
+    ...Array.from({ length: 151 }, (_, i) => at(1, i / 150)),
+    ...Array.from({ length: 81 }, (_, i) => at(1 - i / 80, 1)),
+    ...Array.from({ length: 151 }, (_, i) => at(0, 1 - i / 150)),
+  ];
+  details.push(thread(boundary, 0.00095, 460, true));
+  for (const side of [-1, 1])
+    details.push(
+      stitches((t) => at(side < 0 ? 0.012 : 0.988, t).add(new Vector3(0, 0, 0.0005)), 200),
+    );
+  details.push(stitches((t) => at(t, 0.01).add(new Vector3(0, 0, 0.0005)), 80));
+  details.push(stitches((t) => at(t, 0.989).add(new Vector3(0, 0, 0.0005)), 60));
+  const neckLeft = body(-0.114, 0.829),
+    neckRight = body(0.114, 0.829);
+  neckLeft.z -= 0.0004;
+  neckRight.z -= 0.0004;
+  details.push(
+    strap(
+      [
+        neckLeft.toArray(),
+        [-0.103, 0.893, 0.003],
+        [-0.075, 0.968, -0.018],
+        [-0.035, 0.989, -0.028],
+        [0.024, 0.99, -0.025],
+        [0.069, 0.971, -0.013],
+        [0.102, 0.904, 0.004],
+        neckRight.toArray(),
+      ],
+      0.018,
+      0.00135,
+      0.22,
+    ),
+  );
+  for (const side of [-1, 1]) {
+    const anchor = body(side * 0.17, 0.579);
+    anchor.z -= 0.001;
+    const pts =
+      side < 0
+        ? [
+            anchor.toArray(),
+            [-0.219, 0.57, -0.014],
+            [-0.255, 0.515, -0.036],
+            [-0.252, 0.402, -0.047],
+            [-0.221, 0.275, -0.039],
+            [-0.23, 0.153, -0.021],
+            [-0.251, 0.094, -0.006],
+          ]
+        : [
+            anchor.toArray(),
+            [0.221, 0.568, -0.018],
+            [0.255, 0.486, -0.041],
+            [0.238, 0.365, -0.055],
+            [0.251, 0.235, -0.049],
+            [0.226, 0.112, -0.029],
+            [0.213, 0.052, -0.014],
+          ];
+    details.push(strap(pts, 0.02, 0.00115, side * 0.42));
+    const root = side < 0 ? neckLeft : neckRight;
+    for (const dy of [0, 0.013])
+      details.push(
+        stitches(
+          (t) =>
+            new Vector3(
+              root.x - 0.0075 + 0.015 * t,
+              root.y + dy,
+              body(root.x, root.y + dy).z + 0.0012,
+            ),
+          6,
+        ),
+      );
+  }
+  // A sewn three-sided pocket. Its upper edge stands clear of the apron,
+  // folds inward and exposes a lined mouth; it is deliberately not sealed.
+  const pocket = (u: number, v: number) => {
+    const q = 2 * u - 1,
+      width = 0.113 + 0.02 * smooth(0, 0.13, v),
+      x = q * width;
+    const y = 0.385 + 0.159 * v + 0.002 * q - 0.003 * (1 - q * q) * v ** 6;
+    const gap =
+      0.0015 +
+      (0.01 + 0.002 * bell(q + 0.25, 0.35)) * Math.sin(Math.PI * u) ** 0.75 * smooth(0, 0.95, v);
+    return body(x, y).add(new Vector3(0, 0, gap));
+  };
+  const pocketFace = grid(82, 64, pocket);
+  details.push(pocketFace, lining(pocketFace, 0.001));
+  const lip = grid(
+    90,
+    12,
+    (u, v) => {
+      const p = pocket(u, 1 - v * 0.047);
+      p.z += 0.0006 + 0.00055 * Math.sin(v * Math.PI);
+      return p;
+    },
+    undefined,
+    true,
+  );
+  details.push(lip, lining(lip, 0.0009));
+  details.push(
+    thread(
+      Array.from({ length: 91 }, (_, i) => pocket(i / 90, 1)),
+      0.0008,
+      140,
+    ),
+  );
+  details.push(stitches((t) => pocket(t, 0.96).add(new Vector3(0, 0, 0.001)), 70));
+  for (const side of [0, 1])
+    details.push(
+      stitches((t) => pocket(side === 0 ? 0.015 : 0.985, t).add(new Vector3(0, 0, 0.0004)), 60),
+    );
+  details.push(stitches((t) => pocket(t, 0.019).add(new Vector3(0, 0, 0.0004)), 70));
+  return { front, back, details: merge(details) };
+}
+
+function cap(product: ProductDefinition): CatalogGeometry {
+  const details: BufferGeometry[] = [],
+    inner: BufferGeometry[] = [];
+  const base = 0.038,
+    height = 0.114;
+  const boundaries = [
+    -Math.PI * 0.25,
+    Math.PI * 0.25,
+    Math.PI * 0.625,
+    Math.PI,
+    Math.PI * 1.375,
+    Math.PI * 1.75,
+  ];
+  const rearAngle = (a: number) => Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI));
+  const minT = (a: number) =>
+    Math.abs(rearAngle(a)) < 0.47
+      ? (0.043 / height) * Math.sqrt(Math.max(0, 1 - (rearAngle(a) / 0.47) ** 2))
+      : 0;
+  const crown = (a: number, v: number) => {
+    const t = minT(a) + (1 - minT(a)) * v;
+    if (t > 0.999999) return new Vector3(0, base + height, -0.004);
+    const radius = Math.max(0, 1 - t ** 2.65) ** 0.43;
+    let seamDistance = Infinity;
+    for (const b of boundaries)
+      seamDistance = Math.min(seamDistance, Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))));
+    const inset = 0.00065 * bell(seamDistance, 0.025) * Math.sin(Math.PI * t);
+    const soft =
+      0.0013 * bell(rearAngle(a) - 0.75, 0.28) * bell(t - 0.15, 0.18) -
+      0.0011 * bell(rearAngle(a) + 0.91, 0.24) * bell(t - 0.21, 0.16);
+    return new Vector3(
+      (0.097 * radius + soft - inset) * Math.sin(a),
+      base + height * t,
+      (0.1 * radius + soft - inset) * Math.cos(a) - 0.004 * t,
+    );
+  };
+  const fixCrownPole = (g: BufferGeometry) => {
+    const p = g.getAttribute('position'),
+      n = g.getAttribute('normal');
+    for (let i = 0; i < p.count; i++)
+      if (p.getY(i) > base + height - 0.000001) n.setXYZ(i, 0, 1, 0);
+    return g;
+  };
+  const front = fixCrownPole(
+    grid(88, 94, (u, v) => crown(-Math.PI * 0.25 + u * Math.PI * 0.5, v), printUV(product)),
+  );
+  inner.push(lining(front, 0.0017));
+  for (let panel = 1; panel < 5; panel++) {
+    const a = boundaries[panel]!,
+      b = boundaries[panel + 1]!;
+    const g = fixCrownPole(grid(70, 94, (u, v) => crown(a + (b - a) * u, v)));
+    details.push(g);
+    inner.push(lining(g, 0.0017));
+  }
+  // Five sewn panels: a single broad front panel, four side/rear panels.
+  for (const a of boundaries.slice(0, 5))
+    for (const delta of [-0.01, 0.01])
+      details.push(
+        stitches(
+          (t) => {
+            const p = crown(a + delta, 0.98 * t);
+            return p.add(
+              new Vector3(p.x, (p.y - base) * 0.6, p.z).normalize().multiplyScalar(0.0004),
+            );
+          },
+          110,
+          0.00014,
+        ),
+      );
+  details.push(
+    thread(
+      Array.from({ length: 241 }, (_, i) => crown((i / 240) * TAU, 0)),
+      0.0009,
+      300,
+      true,
+    ),
+  );
+  const sweatband = grid(
+    240,
+    10,
+    (u, v) => {
+      const p = crown(u * TAU, 0),
+        radial = new Vector3(p.x, 0, p.z).normalize();
+      p.addScaledVector(radial, -0.002);
+      p.y += 0.013 * v;
+      return p;
+    },
+    undefined,
+    true,
+  );
+  inner.push(sweatband);
+  const brimAt = (u: number, v: number) => {
+    const q = 2 * u - 1, a = q * 1.20;
+    // A rounded forward lobe returns smoothly into the temples. No side walls
+    // or rectangular corners hang below the crown.
+    const weight = Math.max(0, Math.cos(q * Math.PI / 2)) ** 2;
+    const extension = 0.079 * weight * v;
+    const x = Math.sin(a) * (0.097 + extension * 0.60);
+    const z = Math.cos(a) * (0.100 + extension);
+    const y = base - v * weight * (0.005 + 0.009 * (x / 0.10) ** 2) +
+      0.0015 * Math.sin(Math.PI * v) * weight;
+    return new Vector3(x, y, z);
+  };
+  const brim = grid(128, 72, brimAt, undefined, true);
+  details.push(brim, lining(brim, 0.0028));
+  const brimOutline = [
+    ...Array.from({ length: 129 }, (_, i) => brimAt(i / 128, 1)),
+    ...Array.from({ length: 127 }, (_, i) => brimAt(1 - (i + 1) / 128, 0)),
+  ];
+  details.push(thread(brimOutline, 0.0011, 240, true));
+  for (const v of [0.2, 0.35, 0.5, 0.65, 0.8, 0.94])
+    details.push(
+      stitches((t) => brimAt(0.025 + 0.95 * t, v).add(new Vector3(0, 0.0004, 0)), 100, 0.00013),
+    );
+  // The adjustment strap extends past both edges of the rear opening and is
+  // sewn onto the crown, instead of floating below the cutout.
+  const rearStrap = [
+    [-0.052, 0.042, -0.084],
+    [-0.032, 0.042, -0.097],
+    [0, 0.042, -0.105],
+    [0.033, 0.042, -0.097],
+    [0.052, 0.042, -0.084],
+  ];
+  details.push(strap(rearStrap, 0.016, 0.0014, 0.01));
+  for (const side of [-1, 1]) {
+    details.push(stitches((t) => new Vector3(side * 0.05, 0.036 + 0.012 * t, -0.087), 7, 0.00018));
+    details.push(
+      thread(
+        [
+          new Vector3(side * 0.041, 0.036, -0.093),
+          new Vector3(side * 0.053, 0.036, -0.086),
+          new Vector3(side * 0.053, 0.048, -0.086),
+          new Vector3(side * 0.041, 0.048, -0.093),
+        ],
+        0.0003,
+        24,
+        true,
+      ),
+    );
+  }
+  details.push(
+    thread(
+      [
+        new Vector3(0.013, 0.034, -0.104),
+        new Vector3(0.03, 0.034, -0.1),
+        new Vector3(0.03, 0.05, -0.1),
+        new Vector3(0.013, 0.05, -0.104),
+      ],
+      0.00075,
+      32,
+      true,
+    ),
+  );
+  const button = new SphereGeometry(0.0052, 24, 12);
+  button.scale(1, 0.45, 1);
+  button.translate(0, base + height + 0.0013, -0.004);
+  details.push(button);
+  return { front, details: merge(details), lining: merge(inner) };
+}
+
+/** Offline-built accessory meshes; physical print coordinates are unchanged. */
+export function createCatalogAccessory(product: ProductDefinition): CatalogGeometry {
+  if (product.kind === 'tote') return tote(product);
+  if (product.kind === 'apron') return apron(product);
+  if (product.kind === 'cap') return cap(product);
+  throw new Error(`Unsupported accessory: ${product.id}`);
+}

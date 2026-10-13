@@ -3,17 +3,24 @@ import {
   MathUtils,
   MeshPhysicalMaterial,
   MeshStandardMaterial,
+  Matrix3,
   type Texture,
 } from 'three';
 import { markColorTexture } from '../color/ColorPipeline';
 import type { ProductDefinition, ProjectState } from '../contracts';
 import { createFabricMaps, FABRIC_PRESETS } from './microtexture';
 import { attachMaterialProfile } from './profile';
+import { tileTextures, type MaterialTextures } from './assets';
+import { attachFineHeight } from './height';
 
 export function createFabricMaterial(product: ProductDefinition, state: ProjectState) {
   let preset = state.materialPreset;
   let maps = createFabricMaps(preset);
   let disposed = false;
+  let imported: MaterialTextures = {};
+  const baseColor = { value: null as Texture | null };
+  const hasColor = { value: false };
+  const colorTransform = { value: new Matrix3() };
   const material = new MeshPhysicalMaterial({
     color: '#ffffff',
     metalness: 0,
@@ -30,8 +37,36 @@ export function createFabricMaterial(product: ProductDefinition, state: ProjectS
   });
   material.name = 'MatVision printed cloth';
   const profile = attachMaterialProfile(material, state.materialProfile);
+  const compile = material.onBeforeCompile;
+  const cacheKey = material.customProgramCacheKey;
+  material.onBeforeCompile = (shader, renderer) => {
+    compile.call(material, shader, renderer);
+    shader.uniforms.matFabricColor = baseColor;
+    shader.uniforms.matHasFabricColor = hasColor;
+    shader.uniforms.matFabricTransform = colorTransform;
+    shader.fragmentShader =
+      'uniform sampler2D matFabricColor;\nuniform bool matHasFabricColor;\nuniform mat3 matFabricTransform;\n' +
+      shader.fragmentShader;
+    shader.fragmentShader = shader.fragmentShader.replace(
+      '#include <color_fragment>',
+      `
+      #ifdef USE_MAP
+        if (matHasFabricColor) diffuseColor.rgb *= texture2D(matFabricColor, (matFabricTransform * vec3(vMapUv, 1.0)).xy).rgb;
+      #endif
+      #include <color_fragment>
+    `,
+    );
+  };
+  material.customProgramCacheKey = () => cacheKey.call(material) + '|matvision-fabric-pbr-v1';
+  attachFineHeight(material);
   const controller = {
     material,
+    setMaps(textures: MaterialTextures) {
+      imported = textures;
+      baseColor.value = textures.color ?? null;
+      hasColor.value = !!textures.color;
+      material.needsUpdate = true;
+    },
     get ownedTextureBytes() {
       return disposed ? 0 : maps.approximateBytes;
     },
@@ -47,22 +82,41 @@ export function createFabricMaterial(product: ProductDefinition, state: ProjectS
         material.roughnessMap = maps.roughness;
       }
       const settings = FABRIC_PRESETS[preset];
+      const tileMm = settings.tileMm * nextState.realism.weaveScale;
       // Geometry UVs measure the printable area, including extensions past its bounds.
       // A weave tile retains its millimetre size regardless of artwork crop or scale.
       for (const texture of [maps.normal, maps.roughness]) {
         texture.repeat.set(
-          nextProduct.printableArea.widthMm / settings.tileMm,
-          nextProduct.printableArea.heightMm / settings.tileMm,
+          nextProduct.printableArea.widthMm / tileMm,
+          nextProduct.printableArea.heightMm / tileMm,
         );
         texture.offset.set(
-          nextProduct.printableArea.xMm / settings.tileMm,
+          nextProduct.printableArea.xMm / tileMm,
           (nextProduct.heightMm -
             nextProduct.printableArea.yMm -
             nextProduct.printableArea.heightMm) /
-            settings.tileMm,
+            tileMm,
         );
       }
-      material.normalScale.setScalar(settings.normalStrength);
+      tileTextures(
+        imported,
+        nextState.materials.fabric,
+        nextProduct.printableArea.widthMm,
+        nextProduct.printableArea.heightMm,
+        nextProduct.printableArea.xMm,
+        nextProduct.heightMm - nextProduct.printableArea.yMm - nextProduct.printableArea.heightMm,
+      );
+      if (imported.color) colorTransform.value.copy(imported.color.matrix);
+      material.normalMap = imported.normal ?? maps.normal;
+      material.roughnessMap = imported.roughness ?? maps.roughness;
+      material.bumpMap = imported.height ?? null;
+      material.bumpScale = 0.00008 * nextState.realism.relief;
+      const strength =
+        (imported.normal ? 0.45 : settings.normalStrength) * nextState.realism.relief;
+      material.normalScale.set(
+        strength,
+        imported.normal && nextState.materials.fabric.normalY === 'directx' ? -strength : strength,
+      );
       material.roughness = MathUtils.clamp(
         nextState.roughness *
           (nextState.materialProfile.roughness / 0.88) *
@@ -70,7 +124,7 @@ export function createFabricMaterial(product: ProductDefinition, state: ProjectS
         0.05,
         1,
       );
-      material.sheen = settings.sheen;
+      material.sheen = settings.sheen * nextState.realism.sheen;
       profile.update(nextState.materialProfile);
     },
     setPrintTexture(texture: Texture | null) {

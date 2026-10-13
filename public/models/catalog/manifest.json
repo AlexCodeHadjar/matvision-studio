@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "sourceHash": "02a8bb7b4989a02b826384a04c04336c8ba0f64fb1d05b734213ca498bf7ae55",
+  "models": [
+    {
+      "id": "hoodie-white",
+      "triangles": 517174,
+      "bytes": 7518719,
+      "decodedBytes": 14791740,
+      "sha256": "b7ee1515ac2566308c96308fc55409b43c600bd870d0798c1964388ffd8eb7b6",
+      "bakeMs": 3160
+    },
+    {
+      "id": "sweatshirt-white",
+      "triangles": 450516,
+      "bytes": 6412614,
+      "decodedBytes": 12876616,
+      "sha256": "c848908c3f21591b3c7011e8928c036ceb76a1d55ad2d80302b520d204f04fcf",
+      "bakeMs": 2549
+    },
+    {
+      "id": "tote-white",
+      "triangles": 222032,
+      "bytes": 3668909,
+      "decodedBytes": 6586688,
+      "sha256": "ace1a84615216d01f32f77a025d504221ab409c47ad381649f63c6e5da27880a",
+      "bakeMs": 311
+    },
+    {
+      "id": "longsleeve-white",
+      "triangles": 500364,
+      "bytes": 7209338,
+      "decodedBytes": 14310828,
+      "sha256": "86a7fcd11a777e4d38469a3c4009f1dc48c02b7ddc64db70fbd6494f304c917e",
+      "bakeMs": 2878
+    },
+    {
+      "id": "polo-white",
+      "triangles": 356996,
+      "bytes": 5278408,
+      "decodedBytes": 10207612,
+      "sha256": "2d331fbcd8ab260ab77df3a4639985efda108086bfcafa2b6482dacf45df5ce4",
+      "bakeMs": 1892
+    },
+    {
+      "id": "cap-white",
+      "triangles": 240912,
+      "bytes": 3169571,
+      "decodedBytes": 7407604,
+      "sha256": "613d2ff1419e93d598c36368f05ac9117f912aac585745ee2c5ff63beda6e878",
+      "bakeMs": 423
+    },
+    {
+      "id": "apron-white",
+      "triangles": 175616,
+      "bytes": 2668293,
+      "decodedBytes": 5420628,
+      "sha256": "8b27d1aeb08dab5a18978d688a0d3b5c4406ad37db4a3865e201af0ceb5577ba",
+      "bakeMs": 274
+    }
+  ]
+}

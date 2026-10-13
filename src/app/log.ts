@@ -1,5 +1,5 @@
 export type LogCategory =
-  'APP' | 'RENDERER' | 'TEXTURE' | 'PROJECT' | 'EXPORT' | 'PERFORMANCE' | 'NATIVE';
+  'APP' | 'RENDERER' | 'TEXTURE' | 'PROJECT' | 'EXPORT' | 'PERFORMANCE' | 'NATIVE' | 'ANIMATION';
 /** No source paths or image payloads may be logged. No external telemetry. */
 export function log(
   category: LogCategory,

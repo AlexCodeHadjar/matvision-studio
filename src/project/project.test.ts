@@ -45,7 +45,7 @@ describe('project schema', () => {
       version: 0,
       state: { productId: 'mousepad-400x450', layout: { scale: 2 } },
     });
-    expect(migrated.version).toBe(1);
+    expect(migrated.version).toBe(2);
     expect(migrated.state.productId).toBe('mousepad-400x450');
     expect(migrated.state.layout).toEqual({
       mode: 'cover',
@@ -60,7 +60,7 @@ describe('project schema', () => {
   it('rejects unknown schemas, malformed data and unsafe numeric values', () => {
     expect(() => parseProject('{')).toThrow();
     expect(() => migrateProject({ format: 'unrelated', version: 1 })).toThrow();
-    expect(() => migrateProject({ format: 'matvision-project', version: 2 })).toThrow(
+    expect(() => migrateProject({ format: 'matvision-project', version: 3 })).toThrow(
       'Unsupported project version',
     );
     expect(() => validateProjectState({ ...createDefaultProject(), thicknessMm: -3 })).toThrow();

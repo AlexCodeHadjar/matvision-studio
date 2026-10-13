@@ -1,0 +1,19 @@
+{
+  "version": "0.2.1",
+  "pid": 9940,
+  "exited": false,
+  "responding": true,
+  "windowTitle": "MatVision Studio",
+  "shortcuts": [
+    {
+      "path": "C:\\Users\\alast\\OneDrive\\Рабочий стол\\MatVision Studio.lnk",
+      "target": "C:\\Users\\alast\\Documents\\Codex\\2026-09-15\\files-pasted-by-the-user-lead\\outputs\\MatVisionStudio-0.2.1\\MatVisionStudio.exe"
+    },
+    {
+      "path": "C:\\Users\\alast\\OneDrive\\Рабочий стол\\MatVision Studio 0.2 — товары.lnk",
+      "target": "C:\\Users\\alast\\Documents\\Codex\\2026-09-15\\files-pasted-by-the-user-lead\\outputs\\MatVisionStudio-0.2.1\\MatVisionStudio.exe"
+    }
+  ],
+  "portableExe": "C:\\Users\\alast\\Documents\\Codex\\2026-09-15\\files-pasted-by-the-user-lead\\outputs\\MatVisionStudio-0.2.1\\MatVisionStudio.exe",
+  "sha256": "9F2FE6EAAC18F75E898B2470AAAF8AC5398E604C3F267CFE7F756B82A92342C7"
+}

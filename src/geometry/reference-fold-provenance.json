@@ -1,0 +1,24 @@
+{
+  "authoring": "Photo-guided bounded front geometry relief; not a recovered 3D scan. No photo RGB/albedo or studio lighting is retained. Back has independently authored seam/compression forms and does not use front reference relief.",
+  "algorithm": "alpha-normalized low-frequency luminance band-pass at 256x256; signed depth quantized to 16-bit; maximum 4 mm; smoothly exclude collar labels, drawcord, modeled shoulder seams and pocket perimeter",
+  "sources": [
+    {
+      "kind": "hoodie",
+      "file": "01_Худи_белый.png",
+      "sha256": "1403809653475b3e53fe58723d479121b0f42497dcdf7fed752ab9b29385bbe6",
+      "maximumDepthMm": 4
+    },
+    {
+      "kind": "sweatshirt",
+      "file": "02_Свитшот_белый.png",
+      "sha256": "3293e6e7651d0ff4986858892f604eb561c54ce654fdb3fb05eaf2322072490d",
+      "maximumDepthMm": 4
+    },
+    {
+      "kind": "longsleeve",
+      "file": "04_Лонгслив_белый.png",
+      "sha256": "7cbf75f90129a711f834c6f77ca8354b509d5eefacc512c749240a0e02d557ca",
+      "maximumDepthMm": 4
+    }
+  ]
+}

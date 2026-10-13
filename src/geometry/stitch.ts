@@ -152,8 +152,12 @@ export function createStitchedGeometry(product: ProductDefinition, thicknessMm: 
   const matrix = new Matrix4(),
     up = new Vector3(0, 1, 0);
   for (let i = 0; i < stitchCount; i++) {
-    const { point, outward } = sampler.sample(i * pitch);
+    const variation = Math.sin(i * 2.399963);
+    const { point, outward } = sampler.sample((i + 0.035 * variation) * pitch);
     const tangent = new Vector3(-outward.z, 0, outward.x);
+    // Small fixed manufacturing variation; the attachment height stays unchanged.
+    outward.multiplyScalar(1 + 0.015 * variation);
+    tangent.multiplyScalar(1 + 0.025 * Math.sin(i * 1.73205));
     matrix
       .makeBasis(outward, up, tangent)
       .setPosition(point)
