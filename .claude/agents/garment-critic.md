@@ -90,9 +90,10 @@ Coordinates are pixels in the original photo (x right, y down).
 - Two thin, flat, light-grey drawcords exit through small eyelets at ≈ (447,150) and
   (548,150) and hang down to aglets at ≈ (443,265) and (543,275); continuous, slightly
   curved, no breaks.
-- Kangaroo pocket: straight top edge y≈518 from x≈385 to 630; slanted, slightly curved
+- Kangaroo pocket (traced): straight top edge y≈515 from x≈365 to 642; slanted, slightly curved
   side openings widening down to ≈ (315,700) / (700,700); pocket ends at the waistband.
-- Rib waistband y≈790–860, x≈305–695, slight gathering above it.
+- Rib waistband (traced) y≈784–850, x≈306–698 at its top, ≈313–690 at the hem; slight
+  gathering above it.
 - Set-in sleeves, long, hanging nearly vertically beside the body and ending well below
   the waistband; rib cuffs ≈ 75 px tall at y≈895–970 (traced), with stacked gathers in
   the sleeve just above them (≈ y 855–895).

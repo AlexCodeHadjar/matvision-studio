@@ -20,8 +20,10 @@ export interface CatalogGeometry {
   details: BufferGeometry;
   lining?: BufferGeometry;
   ribbing?: BufferGeometry;
-  /** Dark woven neck tape and size label, rendered with its own material. */
+  /** Woven tape, cords or label print, rendered with its own fixed colour. */
   trim?: BufferGeometry;
+  /** Dark woven brand label. */
+  label?: BufferGeometry;
 }
 const TAU = Math.PI * 2;
 const clamp = (x: number, a = 0, b = 1) => Math.max(a, Math.min(b, x));
@@ -363,7 +365,7 @@ const REFERENCE_PATTERNS: Record<string, {
   },
   longsleeve: {
     axis: 350, bottom: 683, height: 659, neck: [432,29], frontDrop: 41, backDrop: -3,
-    lower: [[504,624],[504,580],[504,539],[503,500],[501,460],[499,420],[498,380],[497,340],[496,300],[498,266],[503,246],[506,238],[511,251],[517,274],[522,303],[529,326],[535,352],[541,382],[545,424],[548,462],[552,505],[557,546],[562,585],[567,622],[571,660],[574,681]],
+    lower: [[504,624],[504,580],[504,539],[503,500],[501,460],[499,420],[498,380],[497,340],[496,300],[498,266],[503,246],[506,238],[511,251],[517,274],[522,303],[529,326],[535,352],[541,382],[545,424],[548,462],[552,505],[557,546],[562,585],[566,622],[569,660],[571,681]],
     upper: [[637,683],[635,663],[634,628],[634,585],[633,543],[635,503],[636,462],[635,423],[632,381],[628,342],[624,307],[620,278],[616,248],[611,223],[603,188],[596,157],[587,128],[575,106],[559,89],[533,74],[500,59],[466,44],[432,29]],
     seam: [[559,89],[548,127],[532,174],[519,215],[506,238]], hemBand: 20, cuffBand: 21,
   },
@@ -467,13 +469,13 @@ function clothing(product: ProductDefinition, kind: string): CatalogGeometry {
     const at: Surface = (x, y) => {
       const d = distance(x, y, sewn),
         ax = Math.abs(x);
-      const rounding = reference ? kind === 'longsleeve' ? 0.011 : polo ? 0.014 : 0.018 : 0.032;
+      const rounding = reference ? kind === 'longsleeve' ? 0.011 : polo ? 0.02 : 0.018 : 0.032;
       const edgeRound = Math.sqrt(1 - Math.exp(-0.00035 / rounding));
       const radial =
         (Math.sqrt(1 - Math.exp(-(d + 0.00035) / rounding)) - edgeRound) / (1 - edgeRound);
       // Empty laid-out cloth is shallow, unlike the old inflated torso. Soft
       // asymmetric folds carry most of the relief rather than body volume.
-      const chest = reference ? kind === 'longsleeve' ? 0.011 : polo ? 0.02 : hoodie ? 0.024 : 0.027 : ribbed ? 0.066 : 0.053;
+      const chest = reference ? kind === 'longsleeve' ? 0.011 : polo ? 0.03 : hoodie ? 0.024 : 0.027 : ribbed ? 0.066 : 0.053;
       const volume = chest * (reference ? 1 - (kind === 'longsleeve' ? 0.28 : polo ? 0.38 : 0.24) * smooth(half - 0.015, half + 0.085, ax) : 1 - 0.2 * smooth(0.21, 0.42, ax));
       const oldFolds =
         0.005 * Math.sin(x * 49 + y * 3 + (sign < 0 ? 1.7 : 0)) * bell(y - hemY - 0.07, 0.15) +
@@ -502,7 +504,7 @@ function clothing(product: ProductDefinition, kind: string): CatalogGeometry {
       const hemBlouse = ribbed ? torsoMask * (
         0.0032 * bell(y - hemRibTop - 0.018, 0.025) * (0.4 + 0.35 * bell(x + 0.085, 0.05) + 0.5 * bell(x - 0.048, 0.04)) -
         0.0012 * bell(y - hemRibTop + 0.002, 0.009)) : 0;
-      const cuffBlouse = ribbed ? 0.0038 * bell(y - cuffRibTop - 0.019 - (x < 0 ? 0.006 : 0), 0.023) * bell(ax - sleeveCentre, 0.031) : 0;
+      const cuffBlouse = ribbed ? (hoodie ? 0.0016 : 0.0038) * bell(y - cuffRibTop - 0.019 - (x < 0 ? 0.006 : 0), 0.023) * bell(ax - sleeveCentre, 0.031) : 0;
       const photoRelief = reference && sign > 0 ? referenceFold(
         kind,
         reference.axis + x / scale,
@@ -540,7 +542,19 @@ function clothing(product: ProductDefinition, kind: string): CatalogGeometry {
         0.0011 * Math.sin(x * 48 + 0.6 + 2.2 * Math.sin(y * 7)) * bell(y - 0.36, 0.17) * bell(x + 0.03, 0.13) +
         shortFold(x, y, -(half - 0.03), armpitY - 0.07, 0.75, 0.009, 0.06, 0.0016) +
         shortFold(x, y, half - 0.034, armpitY - 0.08, -0.7, 0.01, 0.055, 0.0014)) : 0;
-      const folds = reference ? polo ? poloFolds + rearDrape * 0.6 + sideCrease * 0.3 : jerseyFolds +
+      // Sleeve detail: jersey wrinkles at the elbow and just above the hem,
+      // long vertical fleece folds on the sweatshirt forearm and stacked
+      // gathers in the hoodie sleeve directly above its rib cuff.
+      const across = ax - sleeveCentre;
+      const sleeveDetail = !reference || polo ? 0 : sleeveMask * (
+        kind === 'longsleeve'
+          ? 0.0012 * Math.sin(y * 330 + across * 18 + sign) * bell(y - 0.03, 0.014) +
+            0.0013 * Math.sin(y * 260 - across * 25 + 0.7 * sign) * bell(y - 0.28, 0.03)
+          : kind === 'sweatshirt'
+            ? 0.0017 * Math.sin(across * 190 + 0.8 * sign + 0.6 * Math.sin(y * 9)) * bell(y - 0.2, 0.11)
+            : 0.0019 * Math.sin((y - cuffRibTop) * 520) * smooth(cuffRibTop - 0.002, cuffRibTop + 0.004, y) *
+              (1 - smooth(cuffRibTop + 0.03, cuffRibTop + 0.045, y)));
+      const folds = reference ? polo ? poloFolds + rearDrape * 0.6 + sideCrease * 0.3 : sleeveDetail + jerseyFolds +
         photoRelief + rearDrape + sideCrease * 0.45 + sleeveFold * 0.35 + hemBlouse + cuffBlouse : oldFolds;
       // Short side vents open the hem at both side seams.
       const vent = polo && reference ? (1 - smooth(hemY + 0.02, hemY + 0.034, y)) * smooth(half - 0.014, half - 0.002, ax) : 0;
@@ -678,6 +692,14 @@ function clothing(product: ProductDefinition, kind: string): CatalogGeometry {
         return at(x, 0.444 + t * 0.203).add(new Vector3(0, 0, sign * 0.0006));
       });
       details.push(line(seam, 0.00028, 48));
+      // Faint shoulder seam from the neck point to the shoulder point.
+      if (kind === 'longsleeve') {
+        const [nx, ny] = fromPhoto(reference!.neck), [sx, sy] = fromPhoto([559, 89]);
+        details.push(line(Array.from({ length: 16 }, (_, i) => {
+          const t = i / 15;
+          return at(side * (nx + (sx - nx) * t), ny + (sy - ny) * t - 0.0025).add(new Vector3(0, 0, sign * 0.0005));
+        }), 0.0002, 24));
+      }
     }
     if (sign === 1 && hoodie) {
       const pocketOutline = sample2(
@@ -833,16 +855,18 @@ function clothing(product: ProductDefinition, kind: string): CatalogGeometry {
       const rim = new Vector3(
         0.118 * Math.sin(a) * (1 + 0.022 * Math.sin(a * 3 + 0.5)),
         // Front half: the two edges form a V down to the centre-front neck.
-        facing > 0
+        // Both halves have zero slope at the sides, so the top edge flows into
+        // the descending front edges without a kink.
+        (facing > 0
           ? frontNeckY + 0.004 + (0.771 - frontNeckY - 0.004) * Math.abs(Math.sin(a)) ** 0.9
-          : 0.771 + 0.025 * -facing + 0.0018 * Math.sin(a * 2 + 0.3),
+          : 0.771 + 0.025 * (1 - Math.abs(Math.sin(a)) ** 1.5)) + 0.0018 * Math.sin(a * 2 + 0.3),
         0.048 + 0.0025 * Math.sin(a * 2 + 0.4),
       );
       rim.z += (base.z + 0.008 - rim.z) * closeFront;
       // The collapsed bag rests on the shoulders: widest near its base and
       // narrowing towards the opening, not a ring on a narrow neck.
       const lower = new Vector3(
-        0.172 * Math.sin(a),
+        0.158 * Math.sin(a),
         base.y + 0.044 * backWindow + 0.004 * (1 - Math.abs(facing)),
         -0.076 * backWindow + 0.060 * frontWindow - 0.009 * (1 - Math.abs(facing)),
       );
@@ -905,8 +929,8 @@ function clothing(product: ProductDefinition, kind: string): CatalogGeometry {
       const normal = along.clone().cross(outward).normalize();
       // The double-layer front edges are visibly thick where they cross.
       const front = smooth(0.4, 0.95, Math.cos(u * TAU));
-      return p.addScaledVector(normal, -(0.00125 + 0.0035 * front) * (1 - Math.cos(Math.PI * v)))
-        .addScaledVector(outward, (0.0011 + 0.0025 * front) * Math.sin(Math.PI * v));
+      return p.addScaledVector(normal, -(0.0021 + 0.003 * front) * (1 - Math.cos(Math.PI * v)))
+        .addScaledVector(outward, (0.0019 + 0.0022 * front) * Math.sin(Math.PI * v));
     };
     details.push(grid(192, 12, rimRoll));
     details.push(line(Array.from({ length: 128 }, (_, i) => hoodAt(i / 128, 0.91)), 0.00025, 192, true));
@@ -952,7 +976,7 @@ function clothing(product: ProductDefinition, kind: string): CatalogGeometry {
         exit.toArray(), belowExit.toArray(),
         chestCord(side * 0.044, 0.681, 0.012).toArray(),
         chestCord(side * 0.048, 0.642).toArray(),
-        chestCord(side * 0.041, 0.626).toArray(),
+        chestCord(side * 0.041, side > 0 ? 0.617 : 0.626).toArray(),
       ], 40);
       // Flat woven tape (≈ 8 mm) facing forward, ending in a short aglet.
       trims.push(tape(cord, 0.0072, 0.0012));
@@ -1035,7 +1059,7 @@ function clothing(product: ProductDefinition, kind: string): CatalogGeometry {
     // roll line and fall edge follow the supplied front photograph.
     // Rounded turns at the shoulder: no corner where the back band becomes a leaf.
     const roll: Point[] = [[500,96],[530,97],[551,101],[561,110],[558,130],[547,162],[534,194],[522,222]];
-    const fall: Point[] = [[500,128],[550,126],[586,121],[603,121],[607,135],[600,158],[588,186],[571,215],[555,243]];
+    const fall: Point[] = [[500,124],[550,120],[585,112],[603,110],[608,126],[601,156],[588,186],[571,215],[555,243]];
     const rollCurve = new CatmullRomCurve3(roll.map((p) => new Vector3(...fromPhoto(p), 0)), false, 'centripetal');
     const fallCurve = new CatmullRomCurve3(fall.map((p) => new Vector3(...fromPhoto(p), 0)), false, 'centripetal');
     const placketHalf = 22 * scale, phiEnd = Math.acos(placketHalf / neckRadius);
@@ -1058,7 +1082,7 @@ function clothing(product: ProductDefinition, kind: string): CatalogGeometry {
         const fx = side * f.x;
         const onBody = front * surfaces[0]!(fx, f.y).z + (1 - front) * surfaces[1]!(fx, f.y).z;
         const R = new Vector3(side * r.x, r.y, rollZ),
-          F = new Vector3(fx, f.y, onBody + 0.0035 * front - 0.0035 * (1 - front));
+          F = new Vector3(fx, f.y, onBody + 0.0035 * front - 0.002 * (1 - front));
         // Pass the stand through the rounded roll at v = 0.32 (quadratic Bézier).
         const w = 0.32;
         const C = R.clone().sub(n.clone().multiplyScalar((1 - w) ** 2)).sub(F.clone().multiplyScalar(w * w)).divideScalar(2 * w * (1 - w));
@@ -1068,12 +1092,20 @@ function clothing(product: ProductDefinition, kind: string): CatalogGeometry {
         return p;
       };
       const collar = grid(72, 18, collarAt, (_p, u, v) => [u * 0.3 / 0.0048, v * 0.07 / 0.004], side < 0);
-      // Thin flat knit (≈ 2 mm) with a rounded, closed fall edge.
-      ribs.push(collar, inside(collar, 0.0009));
-      ribs.push(line(Array.from({ length: 96 }, (_, i) => collarAt(i / 95, 1)), 0.00055, 128));
+      // Thin flat knit (≈ 1.5 mm).
+      ribs.push(collar, inside(collar, 0.0007));
       // Fine topstitching parallel to the fall edge.
       details.push(line(Array.from({ length: 64 }, (_, i) => collarAt(i / 63, 0.93)).map((p) => p.add(new Vector3(0, 0, 0.0006))), 0.00018, 96));
     }
+  }
+  const labels: BufferGeometry[] = [];
+  if (hoodie && reference) {
+    // Small dark woven label at centre back, seen deep inside the hood.
+    labels.push(grid(6, 8, (u, v) => {
+      const p = surfaces[1]!((u - 0.5) * 0.018, topY - backNeckDrop - 0.003 - 0.02 * v);
+      p.z = p.z * 0.85 + 0.0005;
+      return p;
+    }, undefined, true));
   }
   if (polo && reference) {
     // Inside the back neck: a dark grey tape just below the collar seam and a
@@ -1134,6 +1166,7 @@ function clothing(product: ProductDefinition, kind: string): CatalogGeometry {
     lining: combine(linings),
     ribbing: combine(ribs),
     ...(trims.length ? { trim: combine(trims) } : {}),
+    ...(labels.length ? { label: combine(labels) } : {}),
   };
 }
 

@@ -180,7 +180,8 @@ function tote(product: ProductDefinition): CatalogGeometry {
     // 03_Шоппер_белый.jpg: body ≈ 0.83 wide : 1 tall, a touch wider at the bottom.
     const width = 0.172 + 0.004 * (1 - v) + 0.003 * Math.sin(Math.PI * v) - 0.005 * bell(v - 0.04, 0.07);
     const x = width * q + 0.0018 * Math.sin(v * 7) * c;
-    const bottom = 0.02 + 0.004 * bell(q + 0.87, 0.2) - 0.003 * bell(q - 0.78, 0.18);
+    // Lightly rounded bottom corners.
+    const bottom = 0.02 + 0.004 * bell(q + 0.87, 0.2) - 0.003 * bell(q - 0.78, 0.18) + 0.006 * smooth(0.9, 1, Math.abs(q)) ** 2;
     const y =
       bottom +
       0.415 * v -
@@ -188,19 +189,20 @@ function tote(product: ProductDefinition): CatalogGeometry {
       0.0006 * Math.sin(q * 8) * (1 - v) ** 6;
     // A hanging empty bag: the walls meet in a thin bottom seam and open only
     // slightly, instead of a stuffed cushion with a rounded floor.
-    const seal = smooth(0, 0.22, v);
+    const seal = smooth(0, 0.13, v);
     const volume = (0.011 + 0.005 * Math.sin(v * Math.PI)) * seal;
     // The photographed bag hangs almost flat: only faint creases near the
     // bottom corners, no dark trough along the bottom seam.
     const lowFold =
-      (0.0035 * bell(q + 0.81 + 0.06 * v, 0.11) - 0.003 * bell(q - 0.78 + 0.17 * v, 0.13)) *
+      (0.0012 * bell(q + 0.81 + 0.06 * v, 0.11) - 0.001 * bell(q - 0.78 + 0.17 * v, 0.13)) *
       bell(v - 0.1, 0.105);
     const sideFold =
       -0.0032 * bell(q - 0.83 + 0.035 * Math.sin(v * 10), 0.085) * smooth(0.15, 0.35, v);
     const tension =
       0.0026 * Math.sin(q * 23 + sign) * (bell(q + 0.45, 0.19) + bell(q - 0.44, 0.16)) * v ** 6;
     const drape =
-      (0.0025 * bell(q + 0.22 - 0.12 * v, 0.14) - 0.0016 * bell(q - 0.13 + 0.05 * v, 0.10)) *
+      // Only very soft slack in the lower panel; deeper dents read as a stain.
+      (0.0008 * bell(q + 0.22 - 0.12 * v, 0.14) - 0.0005 * bell(q - 0.13 + 0.05 * v, 0.10)) *
       bell(v - 0.19, 0.23) +
       0.003 * bell(q - 0.66 + 0.21 * v, 0.09) * bell(v - 0.52, 0.36);
     const z =
@@ -237,13 +239,17 @@ function tote(product: ProductDefinition): CatalogGeometry {
       ),
     );
     details.push(
-      stitches((t) => at(t, 0.974, sign).add(new Vector3(0, 0, sign * 0.001)), 160, 0.00015),
+      stitches((t) => at(t, 0.97, sign).add(new Vector3(0, 0, sign * 0.0012)), 160, 0.00024),
     );
-    const left = at(uForX(-handleX), 0.93, sign),
-      right = at(uForX(handleX), 0.93, sign);
+    // Each strap end lies flat on the outside for ≈ 4 cm below the top edge,
+    // where it is box-stitched, then rises into the loop.
+    const flat = (x: number, v: number) => at(uForX(x), v, sign).add(new Vector3(0, 0, sign * 0.0011));
+    const left = flat(-handleX, 0.9),
+      right = flat(handleX, 0.9);
     const z = (k: number) => sign * k;
     const pts = [
       left.toArray(),
+      flat(-handleX, 0.99).toArray(),
       [-0.1, 0.47, z(0.017)],
       [-0.087, 0.55, z(0.011)],
       [-0.071, 0.63, z(0.0075)],
@@ -255,12 +261,13 @@ function tote(product: ProductDefinition): CatalogGeometry {
       [0.072, 0.628, z(0.0075)],
       [0.089, 0.548, z(0.011)],
       [0.101, 0.469, z(0.017)],
+      flat(handleX, 0.99).toArray(),
       right.toArray(),
     ];
     details.push(strap(pts, 0.031, 0.0017, sign > 0 ? 0.05 : -0.05));
     for (const x of [-handleX, handleX]) {
       const surface = (dx: number, v: number) =>
-        at(uForX(x + dx), 0.918 + 0.078 * v, sign).add(new Vector3(0, 0, sign * 0.00135));
+        at(uForX(x + dx), 0.9 + 0.09 * v, sign).add(new Vector3(0, 0, sign * 0.002));
       details.push(grid(12, 16, (u, v) => surface((u - 0.5) * 0.031, v).add(new Vector3(0, 0, sign * 0.0006 * Math.sin(Math.PI * u))), undefined, sign < 0));
       // Box-and-X attachment stitching, heavy enough to read at catalogue scale.
       const sew = (f: (t: number) => Vector3, n: number) => details.push(stitches((t) => f(t).add(new Vector3(0, 0, sign * 0.0009)), n, 0.00028));
@@ -454,7 +461,8 @@ function cap(product: ProductDefinition): CatalogGeometry {
   // temples where the pre-curved brim bends down.
   const dip = (a: number) => {
     const c = Math.cos(a);
-    return c > 0 ? 0.034 * Math.sin(a) ** 2 * c ** 0.2 : 0;
+    // Smoothly zero towards the temples: a power of cos(a) left a step there.
+    return 0.034 * Math.sin(a) ** 2 * smooth(0, 0.35, c);
   };
   const rearAngle = (a: number) => Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI));
   const minT = (a: number) =>
@@ -515,10 +523,10 @@ function cap(product: ProductDefinition): CatalogGeometry {
       details.push(
         stitches(
           (t) => {
-            const v = 0.94 * t, d = delta * (1 - 0.8 * t);
+            const v = 0.9 * t, d = delta * (1 - 0.8 * t);
             const n = crownNormal(a + d, v);
             if (n.dot(new Vector3(Math.sin(a), 0.3, Math.cos(a))) < 0) n.negate();
-            return crown(a + d, v).addScaledVector(n, 0.00055);
+            return crown(a + d, v).addScaledVector(n, 0.00035);
           },
           150,
           0.00016,
@@ -569,11 +577,18 @@ function cap(product: ProductDefinition): CatalogGeometry {
     ...Array.from({ length: 159 }, (_, i) => brimAt(1 - (i + 1) / 160, 0)),
   ];
   details.push(thread(brimOutline, 0.0011, 320, true));
-  // Eight concentric rows of topstitching, concentrated towards the edge.
+  // Eight rows of topstitching, each a constant distance from the front edge,
+  // so they follow its convex arc and end where the brim narrows.
+  const reach = (u: number) => brimAt(u, 1).distanceTo(brimAt(u, 0));
   for (let row = 0; row < 8; row++) {
-    const v = 0.42 + row * 0.072;
+    const d = 0.0045 + row * 0.0042;
+    let lo = 0.5;
+    while (lo > 0.02 && reach(lo) > d / 0.9) lo -= 0.002;
     details.push(
-      stitches((t) => brimAt(0.03 + 0.94 * t, v).add(new Vector3(0, 0.0005, 0)), 150, 0.00013),
+      stitches((t) => {
+        const u = lo + (1 - 2 * lo) * t;
+        return brimAt(u, 1 - d / reach(u)).add(new Vector3(0, 0.0005, 0));
+      }, 150, 0.00013),
     );
   }
   // The adjustment strap extends past both edges of the rear opening and is
@@ -615,9 +630,10 @@ function cap(product: ProductDefinition): CatalogGeometry {
       true,
     ),
   );
-  const button = new SphereGeometry(0.0052, 24, 12);
-  button.scale(1, 0.45, 1);
-  button.translate(0, base + height + 0.0013, -0.004);
+  // Fabric-covered button: broader, low dome sunk into the crown.
+  const button = new SphereGeometry(0.0066, 32, 16);
+  button.scale(1, 0.34, 1);
+  button.translate(0, base + height + 0.0006, -0.004);
   details.push(button);
   return { front, details: merge(details), lining: merge(inner) };
 }

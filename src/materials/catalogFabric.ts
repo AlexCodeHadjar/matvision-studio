@@ -36,7 +36,7 @@ export function createCatalogFabricMaps(kind: string, widthM: number, heightM: n
   const maps = { normal: createDataMap(normal, size), roughness: createDataMap(rough, size) };
   // Eight repeats per tile: ≈ 1.5 mm piqué cells, ≈ 1.2 mm canvas/twill ribs,
   // coarse enough to read in catalogue views like the reference photos.
-  const tile = kind === 'polo' ? 0.012 : 0.0095;
+  const tile = kind === 'polo' ? 0.012 : kind === 'cap' ? 0.007 : 0.0095;
   for (const map of Object.values(maps)) map.repeat.set(widthM / tile, heightM / tile);
   return maps;
 }

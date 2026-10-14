@@ -158,7 +158,10 @@ export class MerchProduct {
           maps.normal.repeat.set(traced ? 1 : 36, traced ? 1 : 4);
           maps.roughness.repeat.copy(maps.normal.repeat);
           this.maps.push(...Object.values(maps));
-          add(parts.ribbing, rib, 'Unprinted collar and ribbed cuffs');
+          const ribMesh = add(parts.ribbing, rib, 'Unprinted collar and ribbed cuffs');
+          // The thin polo collar would cast a hard key-light wedge across the
+          // inside back neck; the catalogue photo is lit softly there.
+          if (kind === 'polo') ribMesh.castShadow = false;
         }
         if (parts.trim) {
           const tape = material();
@@ -166,9 +169,17 @@ export class MerchProduct {
           tape.userData.fixedColor = true;
           // Polo neck tape is mid grey, hoodie drawcords a light grey tape and
           // the sweatshirt label print dark grey.
-          tape.color.set(kind === 'hoodie' ? '#c4c6ca' : kind === 'sweatshirt' ? '#4f5257' : '#80838a');
+          tape.color.set(kind === 'hoodie' ? '#d2d4d7' : kind === 'sweatshirt' ? '#4f5257' : '#80838a');
           tape.side = DoubleSide;
           add(parts.trim, tape, 'Woven tape: neck label or drawcords');
+        }
+        if (parts.label) {
+          const label = material();
+          label.userData.scannedCotton = false;
+          label.userData.fixedColor = true;
+          label.color.set('#3c3f44');
+          label.side = DoubleSide;
+          add(parts.label, label, 'Dark woven brand label');
         }
         if (['polo', 'cap', 'tote', 'apron'].includes(kind)) {
           const maps = createCatalogFabricMaps(
