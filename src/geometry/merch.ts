@@ -78,14 +78,17 @@ export function createMugParts(product: ProductDefinition) {
   const r = product.mugDiameterMm! / 2000,
     h = product.heightMm / 1000,
     scale = h / 0.095,
-    thickness = 0.0038 * scale,
-    depth = 0.0044 * scale,
-    fillet = 0.0032 * scale,
-    upperRoot = 0.0765 * scale,
-    lowerRoot = 0.02 * scale;
-  // The reference is a tall oval C, with a 7.6 mm ceramic band and a
-  // 27.4 mm-wide opening. Cubic arcs keep the crown, outside and lower
-  // bend tangent-continuous instead of forming the old short D shape.
+    thickness = 0.0042 * scale,
+    depth = 0.0062 * scale,
+    fillet = 0.0036 * scale,
+    upperRoot = 0.0793 * scale,
+    lowerRoot = 0.0266 * scale;
+  // The user's preferred design mug: a tall "ear" handle rooted ≈ 13 mm
+  // below the lip and ≈ 24 mm above the foot, reaching ≈ 37 mm out, with a
+  // broad flattened band (≈ 8.4 × 12.4 mm). Its crown runs out almost
+  // horizontally and the outside is a smooth oval; cubic arcs keep every
+  // bend tangent-continuous. Both arcs start at the fillet radius so the
+  // root rings meet the arc without a step.
   const p = (x: number, y: number) => new Vector3(r + x * scale, y * scale, 0);
   const profile = mugProfile(r, h),
     outerEnd = profile.findIndex((v) => v.y >= h - 0.002);
@@ -110,18 +113,18 @@ export function createMugParts(product: ProductDefinition) {
   const path = new CurvePath<Vector3>();
   path.add(
     new CubicBezierCurve3(
-      p(0.0032, 0.0792),
-      p(0.0205, 0.0792),
-      p(0.0312, 0.0658),
-      p(0.0312, 0.0483),
+      p(0.0036, 0.082),
+      p(0.0225, 0.0828),
+      p(0.0328, 0.0718),
+      p(0.0328, 0.0525),
     ),
   );
   path.add(
     new CubicBezierCurve3(
-      p(0.0312, 0.0483),
-      p(0.0312, 0.0308),
-      p(0.0205, 0.0174),
-      p(0.0032, 0.0174),
+      p(0.0328, 0.0525),
+      p(0.0328, 0.0352),
+      p(0.0222, 0.024),
+      p(0.0036, 0.024),
     ),
   );
   const positions: number[] = [],

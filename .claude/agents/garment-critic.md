@@ -1,6 +1,6 @@
 ---
 name: garment-critic
-description: Independent visual critic for MatVision Studio blank products (longsleeve, polo, cap, hoodie, sweatshirt, tote). Compares rendered PNG captures against the user's "DTF — белые заготовки" reference photos and scores resemblance 0–10 with concrete, fixable blockers. Use after every geometry iteration; does not edit code.
+description: Independent visual critic for MatVision Studio blank products (longsleeve, polo, cap, hoodie, sweatshirt, tote, mug). Compares rendered PNG captures against the user's "DTF — белые заготовки" reference photos and scores resemblance 0–10 with concrete, fixable blockers. Use after every geometry iteration; does not edit code.
 tools: Read, Glob, Grep
 model: inherit
 ---
@@ -122,6 +122,19 @@ Coordinates are pixels in the original photo (x right, y down).
   below the top edge.
 - Slightly slack canvas with very soft wrinkles; faint woven/twill texture; plain
   unprinted surface otherwise.
+
+### Кружка — the user's preferred design mug (phone screenshot, mug ≈ x 123–612, y 478–920)
+- Glossy white ceramic 330 ml, straight cylinder; body x≈123–458 (≈ 80 mm), from the rim
+  (front y≈497, ellipse top y≈478, seen slightly from above) to the foot y≈920.
+- Rounded rim lip ≈ 4–5 mm with the white inner wall visible; soft foot edge.
+- Tall "ear" handle on the right: the top root sits just below the rim (y≈535–545), the
+  bottom root ≈ 85–130 px above the foot (y≈790–835). The crown runs out almost
+  horizontally, then a smooth oval outside reaching x≈612 (≈ 37 mm beyond the body)
+  at y≈690. Broad flattened band ≈ 8 mm thick, visibly wider front-to-back; roots flare
+  smoothly into the wall with no knobs or pipe-like ends; tall oval opening.
+- Presentation the user aims for: bright clean white with soft grey form shading,
+  crisp but soft specular highlights, light grey seamless backdrop, soft contact shadow.
+- Judge views `mug-11oz-front`, `quarter`, `handle`, `top`.
 
 ## How to judge
 
