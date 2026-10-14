@@ -164,9 +164,10 @@ export class MerchProduct {
           const tape = material();
           tape.userData.scannedCotton = false;
           tape.userData.fixedColor = true;
-          tape.color.set('#80838a');
+          // Polo neck tape is mid grey; hoodie drawcords are a light grey tape.
+          tape.color.set(kind === 'hoodie' ? '#c4c6ca' : '#80838a');
           tape.side = DoubleSide;
-          add(parts.trim, tape, 'Woven neck tape and size label');
+          add(parts.trim, tape, 'Woven tape: neck label or drawcords');
         }
         if (['polo', 'cap', 'tote', 'apron'].includes(kind)) {
           const maps = createCatalogFabricMaps(
@@ -180,7 +181,8 @@ export class MerchProduct {
             if (m.userData.scannedCotton) {
               m.normalMap = maps.normal;
               m.roughnessMap = maps.roughness;
-              m.normalScale.setScalar(0.65);
+              // Piqué cells must read at catalogue distance; canvas and twill stay subtle.
+              m.normalScale.setScalar(kind === 'polo' ? 1.25 : kind === 'cap' ? 0.9 : 0.8);
             }
         } else await this.loadCottonMaps(anisotropy);
       });

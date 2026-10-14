@@ -67,11 +67,13 @@ try {
           ['inside', [w * 0.22, -h * 0.15, h * 0.42], [0, h * 0.18, 0]],
         ];
     if (p.kind === 'tote') views.push(['opening', [0.18, 0.82, 0.36], [0, 0.405, 0]]);
+    // REVIEW_EXTRA='[["name",[x,y,z],[tx,ty,tz],fov]]' adds ad-hoc diagnostic views.
+    if (process.env.REVIEW_EXTRA) views.push(...JSON.parse(process.env.REVIEW_EXTRA));
     // Long-lens view framed like the supplied catalogue photographs.
     if (!mug) {
       const fit = (p.kind === 'cap' ? 0.27 : h * 1.12) / 2 / Math.tan((6 * Math.PI) / 180);
       views.push(p.kind === 'cap'
-        ? ['reference', [0, 0.08 + fit * 0.26, fit * 0.966], [0, 0.08, 0.02], 12]
+        ? ['reference', [0, 0.08 + fit * 0.14, fit * 0.99], [0, 0.07, 0.03], 12]
         : ['reference', [0, center, fit], [0, center, 0], 12]);
     }
     if (p.kind === 'polo') {

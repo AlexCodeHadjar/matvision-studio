@@ -37,7 +37,8 @@ Coordinates are pixels in the original photo (x right, y down).
   visible with a small light printed label at centre back.
 - Set-in sleeves, shoulder seams sloping from neck (≈432,29) to shoulder point
   (≈559,89); armhole seam faintly visible down to the armpit (≈506,238).
-- Body straight, slightly slim; plain coverstitched hem at y≈624, hem half-width ≈154 px.
+- Body straight, slightly slim; plain coverstitched hem band y≈604–624 (bottom edge y≈624),
+  hem half-width ≈154 px.
 - Long slim sleeves hang almost vertically, a narrow gap to the body opening from the
   armpit downward. Sleeves end BELOW the body hem (cuffs at y≈680), plain hemmed cuffs
   (no tall rib), ≈ 60–65 px wide.
@@ -54,8 +55,9 @@ Coordinates are pixels in the original photo (x right, y down).
   dark grey neck tape and a small dark size label at top centre.
 - Placket x≈476–522 from y≈222 to y≈300, two white 4-hole buttons at y≈230 and y≈268,
   stitched box with an X at the placket base (y≈283–300).
-- Set-in short sleeves angled down and outward ≈ 25–30° from vertical; shoulder point
-  ≈ (748,152); sleeve outer edge to ≈ (858,398). Ribbed cuff band ≈ 28 px, slanted:
+- Set-in short sleeves angled down and outward; shoulder point ≈ (748,152). The outer
+  sleeve outline is gently convex (rounded sleeve head), approximately through
+  (772,168), (796,191), (819,220), (837,254), (850,293), (858,333) to the cuff at (858,398). Ribbed cuff band ≈ 28 px, slanted:
   inner end at the armpit (≈728,412), outer end higher (≈858,398).
 - Straight body, side seams x≈272 / 728 from armpit to hem; plain hem at y≈950 with
   short side vents (≈ 30 px) at both side seams.
@@ -77,9 +79,13 @@ Coordinates are pixels in the original photo (x right, y down).
 
 ### 01_Худи_белый.png (1000 × 1000) — hoodie, fleece 260 g, brushed
 - Ghost front view, hood up. Garment spans x≈145–855, y≈35–975.
-- Hood: tall soft bag rising above the shoulders (top y≈40, x≈330–670), deep opening
-  with the white hood lining visible inside; the two front edges cross over at the neck
-  (left over right) around y≈230; generous double-layer edge, soft folds, no hard rim.
+- Hood (traced): outer outline (341,107) (350,71) (375,48) (425,39) top (500,38) (574,41)
+  (628,52) (650,75) (657,104) (658,132), meeting the shoulders at ≈ (336,150)/(664,149).
+  The opening is a shield shape seen slightly from above: nearly flat top edge
+  (357,78) (390,66) (450,63) (510,63) (568,68) (614,78) (633,91), then the two front edges
+  descend (605,117) (556,138) to the centre front at (504,155); they meet and cross
+  (left over right) at the neck around (506,172). White lining visible inside;
+  soft double-layer edge, no hard rim and no band of hood across the front of the neck.
 - Small dark label inside the back neck at top centre.
 - Two thin, flat, light-grey drawcords exit through small eyelets at ≈ (447,150) and
   (548,150) and hang down to aglets at ≈ (443,265) and (543,275); continuous, slightly
@@ -88,7 +94,8 @@ Coordinates are pixels in the original photo (x right, y down).
   side openings widening down to ≈ (315,700) / (700,700); pocket ends at the waistband.
 - Rib waistband y≈790–860, x≈305–695, slight gathering above it.
 - Set-in sleeves, long, hanging nearly vertically beside the body and ending well below
-  the waistband; rib cuffs ≈ 110 px tall at y≈855–970 with stacked folds above them.
+  the waistband; rib cuffs ≈ 75 px tall at y≈895–970 (traced), with stacked gathers in
+  the sleeve just above them (≈ y 855–895).
 - Brushed fleece: thick soft fabric, rounded edges, moderate folds at armpits, elbows
   and above cuffs.
 
@@ -96,8 +103,10 @@ Coordinates are pixels in the original photo (x right, y down).
 - Flat front view. Garment spans x≈83–611, y≈42–662; axis x≈347.
 - Crew neck rib ≈ 2 cm wide; inside back neck visible with a white label printed with a
   small logo and "STAN".
-- Dropped shoulders: shoulder seams sit low on the arm (≈ (170,180) / (530,180));
-  near-horizontal shoulder line, boxy wide body.
+- Dropped shoulders, boxy wide body. Traced outline: from the neck (423,53) the shoulder
+  slopes ≈ 25° through (486,86) (522,99) (554,113) to (575,128), then turns down the
+  sleeve (593,170) (598,246) (605,340). The sleeve seam sits low on the upper arm and is
+  only faintly visible.
 - Rib waistband y≈570–620; long sleeves hang down with a slight outward curve and end
   below the waistband in rib cuffs (≈ 47 px) at y≈610–660.
 - Smooth heavy fabric with few soft vertical folds on the sleeves and a little blousing

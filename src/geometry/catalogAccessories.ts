@@ -453,7 +453,7 @@ function cap(product: ProductDefinition): CatalogGeometry {
   // temples where the pre-curved brim bends down.
   const dip = (a: number) => {
     const c = Math.cos(a);
-    return c > 0 ? 0.021 * Math.sin(a) ** 2 * Math.sqrt(c) : 0;
+    return c > 0 ? 0.03 * Math.sin(a) ** 4 * c ** 0.2 : 0;
   };
   const rearAngle = (a: number) => Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI));
   const minT = (a: number) =>
@@ -501,17 +501,25 @@ function cap(product: ProductDefinition): CatalogGeometry {
     inner.push(lining(g, 0.0017));
   }
   // Five sewn panels: a single broad front panel, four side/rear panels.
+  // Each seam's twin topstitch runs continuously from the brim up to the
+  // button, lifted along the true crown normal so it never sinks into the cloth.
+  const crownNormal = (a: number, v: number) => {
+    const e = 0.0005;
+    const du = crown(a + e, v).sub(crown(a - e, v));
+    const dv = crown(a, Math.min(0.999, v + e)).sub(crown(a, Math.max(0, v - e)));
+    return du.cross(dv).normalize().multiplyScalar(-1);
+  };
   for (const a of boundaries.slice(0, 5))
-    for (const delta of [-0.01, 0.01])
+    for (const delta of [-0.012, 0.012])
       details.push(
         stitches(
           (t) => {
-            const p = crown(a + delta, 0.98 * t);
-            return p.add(
-              new Vector3(p.x, (p.y - base) * 0.6, p.z).normalize().multiplyScalar(0.0004),
-            );
+            const v = 0.985 * t, d = delta * (1 - 0.85 * t);
+            const n = crownNormal(a + d, v);
+            if (n.dot(new Vector3(Math.sin(a), 0.3, Math.cos(a))) < 0) n.negate();
+            return crown(a + d, v).addScaledVector(n, 0.0005);
           },
-          110,
+          130,
           0.00014,
         ),
       );
@@ -546,9 +554,10 @@ function cap(product: ProductDefinition): CatalogGeometry {
       c = Math.cos(a);
     const inner = new Vector3(0.101 * s, base - dip(a), 0.1 * c - 0.0005);
     const outer = new Vector3(0.107 * s, base - dip(a), 0.176 * c);
-    const p = inner.lerp(outer, v);
-    const reach = v * (0.3 + 0.7 * c);
-    p.y -= reach * (0.027 + 0.034 * s ** 4) - 0.0025 * Math.sin(Math.PI * v) * c;
+    const p = inner.clone().lerp(outer, v);
+    // Rigid forward pitch (≈ 27°) about the seam plus the pre-curve that bends
+    // the extreme sides down; together they give the convex front arc.
+    p.y -= (p.z - inner.z) * 0.51 + 0.02 * s ** 6 * v - 0.0022 * Math.sin(Math.PI * v) * c;
     return p;
   };
   const brim = grid(160, 72, brimAt, undefined, true);
