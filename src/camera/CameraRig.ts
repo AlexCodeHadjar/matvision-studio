@@ -74,7 +74,7 @@ export class CameraRig {
     if (productKind(product) !== 'mat') {
       const pose = product.defaultCameraFraming;
       const target = new Vector3().fromArray(pose.target);
-      let position = new Vector3().fromArray(pose.position);
+      const position = new Vector3().fromArray(pose.position);
       const shirt = isTextile(product);
       const referenceCut = ['hoodie', 'sweatshirt', 'longsleeve', 'polo'].includes(product.kind ?? '');
       const size = referenceCut ? product.heightMm / 1000 :

@@ -186,8 +186,10 @@ function tote(product: ProductDefinition): CatalogGeometry {
       0.415 * v -
       (0.009 * c + 0.004 * bell(q + 0.32, 0.33)) * v ** 8 +
       0.0006 * Math.sin(q * 8) * (1 - v) ** 6;
-    const seal = Math.sqrt(smooth(0, 0.08, v));
-    const volume = (0.023 + 0.008 * Math.sin(v * Math.PI)) * seal;
+    // A hanging empty bag: the walls meet in a thin bottom seam and open only
+    // slightly, instead of a stuffed cushion with a rounded floor.
+    const seal = smooth(0, 0.22, v);
+    const volume = (0.011 + 0.005 * Math.sin(v * Math.PI)) * seal;
     // The photographed bag hangs almost flat: only faint creases near the
     // bottom corners, no dark trough along the bottom seam.
     const lowFold =
@@ -198,7 +200,7 @@ function tote(product: ProductDefinition): CatalogGeometry {
     const tension =
       0.0026 * Math.sin(q * 23 + sign) * (bell(q + 0.45, 0.19) + bell(q - 0.44, 0.16)) * v ** 6;
     const drape =
-      (0.005 * bell(q + 0.22 - 0.12 * v, 0.14) - 0.004 * bell(q - 0.13 + 0.05 * v, 0.10)) *
+      (0.0025 * bell(q + 0.22 - 0.12 * v, 0.14) - 0.0016 * bell(q - 0.13 + 0.05 * v, 0.10)) *
       bell(v - 0.19, 0.23) +
       0.003 * bell(q - 0.66 + 0.21 * v, 0.09) * bell(v - 0.52, 0.36);
     const z =
@@ -237,8 +239,8 @@ function tote(product: ProductDefinition): CatalogGeometry {
     details.push(
       stitches((t) => at(t, 0.974, sign).add(new Vector3(0, 0, sign * 0.001)), 160, 0.00015),
     );
-    const left = at(uForX(-handleX), 0.958, sign),
-      right = at(uForX(handleX), 0.958, sign);
+    const left = at(uForX(-handleX), 0.93, sign),
+      right = at(uForX(handleX), 0.93, sign);
     const z = (k: number) => sign * k;
     const pts = [
       left.toArray(),
@@ -259,14 +261,13 @@ function tote(product: ProductDefinition): CatalogGeometry {
     for (const x of [-handleX, handleX]) {
       const surface = (dx: number, v: number) =>
         at(uForX(x + dx), 0.918 + 0.078 * v, sign).add(new Vector3(0, 0, sign * 0.00135));
-      details.push(grid(12, 16, (u, v) => surface((u - 0.5) * 0.031, v), undefined, sign < 0));
-      // Box-and-X attachment stitching.
-      for (const side of [-1, 1])
-        details.push(stitches((t) => surface(side * 0.0125, t * 0.82 + 0.07), 12));
-      for (const v of [0.08, 0.89])
-        details.push(stitches((t) => surface(-0.0125 + 0.025 * t, v), 12));
-      details.push(stitches((t) => surface(-0.0125 + 0.025 * t, 0.08 + 0.81 * t), 14));
-      details.push(stitches((t) => surface(0.0125 - 0.025 * t, 0.08 + 0.81 * t), 14));
+      details.push(grid(12, 16, (u, v) => surface((u - 0.5) * 0.031, v).add(new Vector3(0, 0, sign * 0.0006 * Math.sin(Math.PI * u))), undefined, sign < 0));
+      // Box-and-X attachment stitching, heavy enough to read at catalogue scale.
+      const sew = (f: (t: number) => Vector3, n: number) => details.push(stitches((t) => f(t).add(new Vector3(0, 0, sign * 0.0009)), n, 0.00028));
+      for (const side of [-1, 1]) sew((t) => surface(side * 0.0125, t * 0.82 + 0.07), 12);
+      for (const v of [0.08, 0.89]) sew((t) => surface(-0.0125 + 0.025 * t, v), 12);
+      sew((t) => surface(-0.0125 + 0.025 * t, 0.08 + 0.81 * t), 15);
+      sew((t) => surface(0.0125 - 0.025 * t, 0.08 + 0.81 * t), 15);
     }
   }
   for (const u of [0, 1])
@@ -453,7 +454,7 @@ function cap(product: ProductDefinition): CatalogGeometry {
   // temples where the pre-curved brim bends down.
   const dip = (a: number) => {
     const c = Math.cos(a);
-    return c > 0 ? 0.03 * Math.sin(a) ** 4 * c ** 0.2 : 0;
+    return c > 0 ? 0.034 * Math.sin(a) ** 2 * c ** 0.2 : 0;
   };
   const rearAngle = (a: number) => Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI));
   const minT = (a: number) =>
@@ -514,13 +515,13 @@ function cap(product: ProductDefinition): CatalogGeometry {
       details.push(
         stitches(
           (t) => {
-            const v = 0.985 * t, d = delta * (1 - 0.85 * t);
+            const v = 0.94 * t, d = delta * (1 - 0.8 * t);
             const n = crownNormal(a + d, v);
             if (n.dot(new Vector3(Math.sin(a), 0.3, Math.cos(a))) < 0) n.negate();
-            return crown(a + d, v).addScaledVector(n, 0.0005);
+            return crown(a + d, v).addScaledVector(n, 0.00055);
           },
-          130,
-          0.00014,
+          150,
+          0.00016,
         ),
       );
   details.push(
@@ -553,11 +554,12 @@ function cap(product: ProductDefinition): CatalogGeometry {
       s = Math.sin(a),
       c = Math.cos(a);
     const inner = new Vector3(0.101 * s, base - dip(a), 0.1 * c - 0.0005);
-    const outer = new Vector3(0.107 * s, base - dip(a), 0.176 * c);
+    // Forward reach falls off faster than the crown arc: a convex front edge.
+    const outer = new Vector3(0.106 * s, base - dip(a), 0.1 * c + 0.068 * Math.max(0, c) ** 1.7);
     const p = inner.clone().lerp(outer, v);
     // Rigid forward pitch (≈ 27°) about the seam plus the pre-curve that bends
     // the extreme sides down; together they give the convex front arc.
-    p.y -= (p.z - inner.z) * 0.51 + 0.02 * s ** 6 * v - 0.0022 * Math.sin(Math.PI * v) * c;
+    p.y -= (p.z - inner.z) * 0.5 + 0.008 * s ** 6 * v - 0.0022 * Math.sin(Math.PI * v) * c;
     return p;
   };
   const brim = grid(160, 72, brimAt, undefined, true);

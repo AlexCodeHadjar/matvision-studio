@@ -34,7 +34,9 @@ export function createCatalogFabricMaps(kind: string, widthM: number, heightM: n
       rough.set([r, r, r, 255], o);
     }
   const maps = { normal: createDataMap(normal, size), roughness: createDataMap(rough, size) };
-  // Eight repeats in a 6 mm tile: the weave stays submillimetre at product scale.
-  for (const map of Object.values(maps)) map.repeat.set(widthM / 0.006, heightM / 0.006);
+  // Eight repeats per tile: ≈ 1.5 mm piqué cells, ≈ 1.2 mm canvas/twill ribs,
+  // coarse enough to read in catalogue views like the reference photos.
+  const tile = kind === 'polo' ? 0.012 : 0.0095;
+  for (const map of Object.values(maps)) map.repeat.set(widthM / tile, heightM / tile);
   return maps;
 }

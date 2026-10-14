@@ -164,8 +164,9 @@ export class MerchProduct {
           const tape = material();
           tape.userData.scannedCotton = false;
           tape.userData.fixedColor = true;
-          // Polo neck tape is mid grey; hoodie drawcords are a light grey tape.
-          tape.color.set(kind === 'hoodie' ? '#c4c6ca' : '#80838a');
+          // Polo neck tape is mid grey, hoodie drawcords a light grey tape and
+          // the sweatshirt label print dark grey.
+          tape.color.set(kind === 'hoodie' ? '#c4c6ca' : kind === 'sweatshirt' ? '#4f5257' : '#80838a');
           tape.side = DoubleSide;
           add(parts.trim, tape, 'Woven tape: neck label or drawcords');
         }
