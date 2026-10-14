@@ -76,7 +76,7 @@ export class CameraRig {
       const target = new Vector3().fromArray(pose.target);
       let position = new Vector3().fromArray(pose.position);
       const shirt = isTextile(product);
-      const referenceCut = ['hoodie', 'sweatshirt', 'longsleeve'].includes(product.kind ?? '');
+      const referenceCut = ['hoodie', 'sweatshirt', 'longsleeve', 'polo'].includes(product.kind ?? '');
       const size = referenceCut ? product.heightMm / 1000 :
         Math.max(product.widthMm, product.heightMm, product.kind === 'cap' ? 340 : 0) / 1000;
       const h = product.heightMm / 1000;

@@ -177,18 +177,21 @@ function tote(product: ProductDefinition): CatalogGeometry {
     const angle = (u - 0.5) * Math.PI,
       q = Math.sin(angle),
       c = Math.max(0, Math.cos(angle));
-    const width = 0.188 + 0.004 * Math.sin(Math.PI * v) - 0.005 * bell(v - 0.04, 0.07);
+    // 03_Шоппер_белый.jpg: body ≈ 0.83 wide : 1 tall, a touch wider at the bottom.
+    const width = 0.172 + 0.004 * (1 - v) + 0.003 * Math.sin(Math.PI * v) - 0.005 * bell(v - 0.04, 0.07);
     const x = width * q + 0.0018 * Math.sin(v * 7) * c;
-    const bottom = 0.025 + 0.005 * bell(q + 0.87, 0.2) - 0.004 * bell(q - 0.78, 0.18);
+    const bottom = 0.02 + 0.004 * bell(q + 0.87, 0.2) - 0.003 * bell(q - 0.78, 0.18);
     const y =
       bottom +
-      0.395 * v -
+      0.415 * v -
       (0.009 * c + 0.004 * bell(q + 0.32, 0.33)) * v ** 8 +
-      0.0016 * Math.sin(q * 8) * (1 - v) ** 6;
-    const seal = Math.sqrt(smooth(0, 0.14, v));
+      0.0006 * Math.sin(q * 8) * (1 - v) ** 6;
+    const seal = Math.sqrt(smooth(0, 0.08, v));
     const volume = (0.023 + 0.008 * Math.sin(v * Math.PI)) * seal;
+    // The photographed bag hangs almost flat: only faint creases near the
+    // bottom corners, no dark trough along the bottom seam.
     const lowFold =
-      (0.006 * bell(q + 0.81 + 0.06 * v, 0.11) - 0.007 * bell(q - 0.78 + 0.17 * v, 0.13)) *
+      (0.0035 * bell(q + 0.81 + 0.06 * v, 0.11) - 0.003 * bell(q - 0.78 + 0.17 * v, 0.13)) *
       bell(v - 0.1, 0.105);
     const sideFold =
       -0.0032 * bell(q - 0.83 + 0.035 * Math.sin(v * 10), 0.085) * smooth(0.15, 0.35, v);
@@ -203,7 +206,10 @@ function tote(product: ProductDefinition): CatalogGeometry {
       0.0018 * c * Math.sin(q * 5 + v * 4 + sign) * seal;
     return new Vector3(x, y, z);
   };
-  const uForX = (x: number) => 0.5 + Math.asin(clamp(x / 0.19, -1, 1)) / Math.PI;
+  const uForX = (x: number) => 0.5 + Math.asin(clamp(x / 0.174, -1, 1)) / Math.PI;
+  // Handles are sewn on the outside at ≈ 61 % of the half width and hang as one
+  // narrow loop; the rear pair sits directly behind the front pair.
+  const handleX = 0.105;
   for (const sign of [1, -1]) {
     const face = grid(140, 144, (u, v) => at(u, v, sign), printUV(product, sign), sign < 0);
     faces.push(face);
@@ -231,46 +237,36 @@ function tote(product: ProductDefinition): CatalogGeometry {
     details.push(
       stitches((t) => at(t, 0.974, sign).add(new Vector3(0, 0, sign * 0.001)), 160, 0.00015),
     );
-    const left = at(uForX(-0.087), 0.958, sign),
-      right = at(uForX(0.088), 0.96, sign);
-    const pts =
-      sign > 0
-        ? [
-            left.toArray(),
-            [-0.085, 0.457, 0.041],
-            [-0.061, 0.564, 0.027],
-            [-0.04, 0.686, 0.003],
-            [-0.025, 0.713, -0.005],
-            [0.002, 0.724, -0.007],
-            [0.03, 0.711, -0.003],
-            [0.045, 0.684, 0.009],
-            [0.051, 0.605, 0.026],
-            [0.078, 0.484, 0.039],
-            right.toArray(),
-          ]
-        : [
-            left.toArray(),
-            [-0.078, 0.472, -0.043],
-            [-0.038, 0.597, -0.058],
-            [-0.02, 0.687, -0.063],
-            [-0.008, 0.707, -0.064],
-            [0.017, 0.718, -0.062],
-            [0.043, 0.707, -0.058],
-            [0.059, 0.684, -0.054],
-            [0.057, 0.656, -0.049],
-            [0.083, 0.546, -0.038],
-            [0.087, 0.444, -0.032],
-            right.toArray(),
-          ];
-    details.push(strap(pts, 0.024, 0.0016, sign > 0 ? 0.19 : -0.28));
-    for (const x of [-0.087, 0.088]) {
+    const left = at(uForX(-handleX), 0.958, sign),
+      right = at(uForX(handleX), 0.958, sign);
+    const z = (k: number) => sign * k;
+    const pts = [
+      left.toArray(),
+      [-0.1, 0.47, z(0.017)],
+      [-0.087, 0.55, z(0.011)],
+      [-0.071, 0.63, z(0.0075)],
+      [-0.053, 0.698, z(0.0055)],
+      [-0.033, 0.734, z(0.0048)],
+      [0.002, 0.745, z(0.0046)],
+      [0.035, 0.733, z(0.0048)],
+      [0.054, 0.697, z(0.0055)],
+      [0.072, 0.628, z(0.0075)],
+      [0.089, 0.548, z(0.011)],
+      [0.101, 0.469, z(0.017)],
+      right.toArray(),
+    ];
+    details.push(strap(pts, 0.031, 0.0017, sign > 0 ? 0.05 : -0.05));
+    for (const x of [-handleX, handleX]) {
       const surface = (dx: number, v: number) =>
-        at(uForX(x + dx), 0.925 + 0.071 * v, sign).add(new Vector3(0, 0, sign * 0.00135));
-      details.push(grid(12, 16, (u, v) => surface((u - 0.5) * 0.025, v), undefined, sign < 0));
+        at(uForX(x + dx), 0.918 + 0.078 * v, sign).add(new Vector3(0, 0, sign * 0.00135));
+      details.push(grid(12, 16, (u, v) => surface((u - 0.5) * 0.031, v), undefined, sign < 0));
+      // Box-and-X attachment stitching.
       for (const side of [-1, 1])
-        details.push(stitches((t) => surface(side * 0.0095, t * 0.82 + 0.07), 10));
-      details.push(stitches((t) => surface(-0.0095 + 0.019 * t, 0.08 + 0.8 * t), 12));
-      details.push(stitches((t) => surface(0.0095 - 0.019 * t, 0.08 + 0.8 * t), 12));
+        details.push(stitches((t) => surface(side * 0.0125, t * 0.82 + 0.07), 12));
+      for (const v of [0.08, 0.89])
+        details.push(stitches((t) => surface(-0.0125 + 0.025 * t, v), 12));
+      details.push(stitches((t) => surface(-0.0125 + 0.025 * t, 0.08 + 0.81 * t), 14));
+      details.push(stitches((t) => surface(0.0125 - 0.025 * t, 0.08 + 0.81 * t), 14));
     }
   }
   for (const u of [0, 1])
@@ -442,15 +438,23 @@ function cap(product: ProductDefinition): CatalogGeometry {
   const details: BufferGeometry[] = [],
     inner: BufferGeometry[] = [];
   const base = 0.038,
-    height = 0.114;
+    height = 0.104;
+  // Structured five-panel crown as in 06_Бейсболка_белый.png: one wide
+  // front panel (no centre seam) whose side seams reach the temples.
   const boundaries = [
-    -Math.PI * 0.25,
-    Math.PI * 0.25,
-    Math.PI * 0.625,
+    -Math.PI * 0.35,
+    Math.PI * 0.35,
+    Math.PI * 0.675,
     Math.PI,
-    Math.PI * 1.375,
-    Math.PI * 1.75,
+    Math.PI * 1.325,
+    Math.PI * 1.65,
   ];
+  // The brim seam is a "smile": the crown's lower edge dips towards the
+  // temples where the pre-curved brim bends down.
+  const dip = (a: number) => {
+    const c = Math.cos(a);
+    return c > 0 ? 0.021 * Math.sin(a) ** 2 * Math.sqrt(c) : 0;
+  };
   const rearAngle = (a: number) => Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI));
   const minT = (a: number) =>
     Math.abs(rearAngle(a)) < 0.47
@@ -459,17 +463,22 @@ function cap(product: ProductDefinition): CatalogGeometry {
   const crown = (a: number, v: number) => {
     const t = minT(a) + (1 - minT(a)) * v;
     if (t > 0.999999) return new Vector3(0, base + height, -0.004);
-    const radius = Math.max(0, 1 - t ** 2.65) ** 0.43;
+    // Upright buckram front and broad rounded top instead of a hemisphere.
+    const radius = Math.max(0, 1 - t ** 3) ** 0.45;
     let seamDistance = Infinity;
     for (const b of boundaries)
       seamDistance = Math.min(seamDistance, Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))));
     const inset = 0.00065 * bell(seamDistance, 0.025) * Math.sin(Math.PI * t);
+    const frontAngle = Math.atan2(Math.sin(a), Math.cos(a));
     const soft =
       0.0013 * bell(rearAngle(a) - 0.75, 0.28) * bell(t - 0.15, 0.18) -
-      0.0011 * bell(rearAngle(a) + 0.91, 0.24) * bell(t - 0.21, 0.16);
+      0.0011 * bell(rearAngle(a) + 0.91, 0.24) * bell(t - 0.21, 0.16) -
+      // Short vertical crease below the button where the stiffened front folds.
+      0.0016 * bell(frontAngle, 0.035) * smooth(0.68, 0.93, t) * (1 - smooth(0.96, 1, t)) +
+      0.0005 * bell(frontAngle, 0.12) * smooth(0.6, 0.9, t);
     return new Vector3(
-      (0.097 * radius + soft - inset) * Math.sin(a),
-      base + height * t,
+      (0.101 * radius + soft - inset) * Math.sin(a),
+      base + height * t - dip(a) * (1 - t) ** 2,
       (0.1 * radius + soft - inset) * Math.cos(a) - 0.004 * t,
     );
   };
@@ -481,7 +490,7 @@ function cap(product: ProductDefinition): CatalogGeometry {
     return g;
   };
   const front = fixCrownPole(
-    grid(88, 94, (u, v) => crown(-Math.PI * 0.25 + u * Math.PI * 0.5, v), printUV(product)),
+    grid(110, 94, (u, v) => crown(-Math.PI * 0.35 + u * Math.PI * 0.7, v), printUV(product)),
   );
   inner.push(lining(front, 0.0017));
   for (let panel = 1; panel < 5; panel++) {
@@ -529,28 +538,33 @@ function cap(product: ProductDefinition): CatalogGeometry {
   );
   inner.push(sweatband);
   const brimAt = (u: number, v: number) => {
-    const q = 2 * u - 1, a = q * 1.20;
-    // A rounded forward lobe returns smoothly into the temples. No side walls
-    // or rectangular corners hang below the crown.
-    const weight = Math.max(0, Math.cos(q * Math.PI / 2)) ** 2;
-    const extension = 0.079 * weight * v;
-    const x = Math.sin(a) * (0.097 + extension * 0.60);
-    const z = Math.cos(a) * (0.100 + extension);
-    const y = base - v * weight * (0.005 + 0.009 * (x / 0.10) ** 2) +
-      0.0015 * Math.sin(Math.PI * v) * weight;
-    return new Vector3(x, y, z);
+    // Pre-curved brim: its inner edge follows the crown base over ±72°, the
+    // outer edge is a broader half-ellipse, and the sheet bends down at the
+    // sides and slightly forward, as seen from above in the reference photo.
+    const a = (2 * u - 1) * 1.26,
+      s = Math.sin(a),
+      c = Math.cos(a);
+    const inner = new Vector3(0.101 * s, base - dip(a), 0.1 * c - 0.0005);
+    const outer = new Vector3(0.107 * s, base - dip(a), 0.176 * c);
+    const p = inner.lerp(outer, v);
+    const reach = v * (0.3 + 0.7 * c);
+    p.y -= reach * (0.027 + 0.034 * s ** 4) - 0.0025 * Math.sin(Math.PI * v) * c;
+    return p;
   };
-  const brim = grid(128, 72, brimAt, undefined, true);
+  const brim = grid(160, 72, brimAt, undefined, true);
   details.push(brim, lining(brim, 0.0028));
   const brimOutline = [
-    ...Array.from({ length: 129 }, (_, i) => brimAt(i / 128, 1)),
-    ...Array.from({ length: 127 }, (_, i) => brimAt(1 - (i + 1) / 128, 0)),
+    ...Array.from({ length: 161 }, (_, i) => brimAt(i / 160, 1)),
+    ...Array.from({ length: 159 }, (_, i) => brimAt(1 - (i + 1) / 160, 0)),
   ];
-  details.push(thread(brimOutline, 0.0011, 240, true));
-  for (const v of [0.2, 0.35, 0.5, 0.65, 0.8, 0.94])
+  details.push(thread(brimOutline, 0.0011, 320, true));
+  // Eight concentric rows of topstitching, concentrated towards the edge.
+  for (let row = 0; row < 8; row++) {
+    const v = 0.42 + row * 0.072;
     details.push(
-      stitches((t) => brimAt(0.025 + 0.95 * t, v).add(new Vector3(0, 0.0004, 0)), 100, 0.00013),
+      stitches((t) => brimAt(0.03 + 0.94 * t, v).add(new Vector3(0, 0.0005, 0)), 150, 0.00013),
     );
+  }
   // The adjustment strap extends past both edges of the rear opening and is
   // sewn onto the crown, instead of floating below the cutout.
   const rearStrap = [

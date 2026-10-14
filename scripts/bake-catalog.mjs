@@ -14,11 +14,14 @@ const sourceHash = hash(
     fs.readFileSync('scripts/bake-catalog.mjs'),
 );
 const dir = 'public/models/catalog';
+// Optional product ids rebake only those models for quick visual iteration.
+const only = process.argv.slice(2);
 fs.mkdirSync(dir, { recursive: true });
 const previous = fs.existsSync(`${dir}/manifest.json`)
   ? JSON.parse(fs.readFileSync(`${dir}/manifest.json`))
   : null;
 if (
+  !only.length &&
   previous?.sourceHash === sourceHash &&
   previous.models.length === products.length &&
   previous.models.every((m) => fs.existsSync(`${dir}/${m.id}.mvgz`))
@@ -28,6 +31,10 @@ if (
 }
 const models = [];
 for (const product of products) {
+  if (only.length && !only.includes(product.id)) {
+    models.push(previous.models.find((m) => m.id === product.id));
+    continue;
+  }
   const started = performance.now(),
     geometries = createCatalogProduct(product),
     parts = {},
@@ -75,5 +82,5 @@ for (const product of products) {
 }
 fs.writeFileSync(
   `${dir}/manifest.json`,
-  JSON.stringify({ version: 1, sourceHash, models }, null, 2),
+  JSON.stringify({ version: 1, sourceHash: only.length ? 'partial' : sourceHash, models }, null, 2),
 );

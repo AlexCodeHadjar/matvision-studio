@@ -3,11 +3,14 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 const out = process.argv[2] ?? 'work/catalog-review/r1';
 const requested = process.argv.slice(3);
+// REVIEW_VIEWS=reference,quarter,... limits captures during quick iterations.
+const only = process.env.REVIEW_VIEWS?.split(',');
+const wanted = (name) => !only || only.includes(name);
 fs.mkdirSync(out, { recursive: true });
 const browser = await chromium.launch({
-  executablePath: 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
+  executablePath: process.env.REVIEW_BROWSER ?? 'C:/Program Files (x86)/Microsoft/Edge/Application/msedge.exe',
   headless: true,
-  args: ['--force_high_performance_gpu'],
+  args: ['--force_high_performance_gpu', ...(process.env.REVIEW_BROWSER ? ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] : [])],
 });
 const page = await browser.newPage({ viewport: { width: 1000, height: 1000 } });
 // A review run retains the loaded module revision while other files are being edited.
@@ -44,7 +47,7 @@ try {
     }, p.id);
     const h = p.heightMm / 1000,
       w = p.widthMm / 1000;
-    const referenceCut = ['hoodie', 'sweatshirt', 'longsleeve'].includes(p.kind);
+    const referenceCut = ['hoodie', 'sweatshirt', 'longsleeve', 'polo'].includes(p.kind);
     const center = h / 2,
       distance = referenceCut ? h * 2 : Math.max(h, w, p.kind === 'cap' ? 0.34 : 0) * 2.15;
     const mug = p.kind === 'mug';
@@ -64,6 +67,23 @@ try {
           ['inside', [w * 0.22, -h * 0.15, h * 0.42], [0, h * 0.18, 0]],
         ];
     if (p.kind === 'tote') views.push(['opening', [0.18, 0.82, 0.36], [0, 0.405, 0]]);
+    // Long-lens view framed like the supplied catalogue photographs.
+    if (!mug) {
+      const fit = (p.kind === 'cap' ? 0.27 : h * 1.12) / 2 / Math.tan((6 * Math.PI) / 180);
+      views.push(p.kind === 'cap'
+        ? ['reference', [0, 0.08 + fit * 0.26, fit * 0.966], [0, 0.08, 0.02], 12]
+        : ['reference', [0, center, fit], [0, center, 0], 12]);
+    }
+    if (p.kind === 'polo') {
+      const cuff = await page.evaluate(() => {
+        const positions = window.live.merch.surfaces.front.geometry.getAttribute('position');
+        let best = null;
+        for (let i = 0; i < positions.count; i++)
+          if (!best || positions.getX(i) > best.x) best = { x: positions.getX(i), y: positions.getY(i) };
+        return best;
+      });
+      views.push(['cuff', [cuff.x + 0.12, cuff.y - 0.02, 0.22], [cuff.x - 0.04, cuff.y, 0]]);
+    }
     if (['hoodie', 'sweatshirt', 'longsleeve'].includes(p.kind)) {
       const cuff = await page.evaluate(() => {
         const positions=window.live.merch.surfaces.front.geometry.getAttribute('position');
@@ -74,11 +94,15 @@ try {
       });
       views.push(['cuff', [cuff.x + 0.05, cuff.y + .12, 0.25], [cuff.x, cuff.y, 0]]);
     }
-    for (const [name, position, target] of views) {
+    for (const [name, position, target, fovDeg = 35] of views.filter(([name]) => wanted(name))) {
       await page.evaluate(
-        ({ position, target }) =>
-          window.live.rig.restore({ preset: 'perspective', position, target, fovDeg: 35 }),
-        { position, target },
+        ({ position, target, fovDeg }) => {
+          // The long-lens view is further away than the orbit limit used in the app.
+          window.live.rig.controls.maxDistance = Math.max(window.live.rig.controls.maxDistance, 20);
+          window.live.camera.far = Math.max(window.live.camera.far, 60);
+          window.live.rig.restore({ preset: 'perspective', position, target, fovDeg });
+        },
+        { position, target, fovDeg },
       );
       await page.waitForTimeout(200);
       const bytes = await page.evaluate(async () =>
@@ -90,7 +114,7 @@ try {
       );
       fs.writeFileSync(`${out}/${p.id}-${name}.png`, Buffer.from(bytes));
     }
-    if (referenceCut) {
+    if (referenceCut && wanted('directional')) {
       // Additional diagnostic lighting; ordinary captures above retain the app defaults.
       await page.evaluate(({ h, distance }) => {
         window.reviewLight = {
@@ -166,7 +190,7 @@ try {
         ),
       };
     });
-    for (const side of ['front', ...(p.backPrintableArea ? ['back'] : [])]) {
+    for (const side of ['front', ...(p.backPrintableArea ? ['back'] : [])].filter((side) => wanted(`printed-${side}`))) {
       const pose = side === 'back' ? views[2] : views[0];
       await page.evaluate(
         ({ position, target }) =>

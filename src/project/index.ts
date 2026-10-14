@@ -54,7 +54,7 @@ export function createDefaultProject(productId = 'deskmat-900x400'): ProjectStat
     productId,
     printSide: 'front',
     sidePrints: {},
-    productColor: ['hoodie', 'sweatshirt', 'longsleeve'].includes(productKind(product)) ? '#fafafa' : '#f4f3ee',
+    productColor: ['hoodie', 'sweatshirt', 'longsleeve', 'polo', 'cap'].includes(productKind(product)) ? '#fafafa' : '#f4f3ee',
     thicknessMm: product.thicknessMm,
     edgePreset: product.edgePreset,
     materialPreset: product.surfaceMaterialPreset,

@@ -33,7 +33,7 @@ function blank(
 ): ProductDefinition {
   const rect = ([xMm, yMm, widthMm, heightMm]: typeof area) => ({ xMm, yMm, widthMm, heightMm });
   const h = heightMm / 1000;
-  const referenceCut = ['hoodie', 'sweatshirt', 'longsleeve'].includes(kind);
+  const referenceCut = ['hoodie', 'sweatshirt', 'longsleeve', 'polo'].includes(kind);
   const distance = referenceCut ? h * 2 : (Math.max(widthMm, heightMm) / 1000) * 2.15;
   return {
     id: `${kind}-white`,

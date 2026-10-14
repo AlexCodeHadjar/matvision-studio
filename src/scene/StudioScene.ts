@@ -311,7 +311,7 @@ export class StudioScene implements SceneController {
     const product = getProduct(this.state.productId);
     const kind = productKind(product),
       textile = isTextile(product);
-    const referenceCut = ['hoodie', 'sweatshirt', 'longsleeve'].includes(kind);
+    const referenceCut = ['hoodie', 'sweatshirt', 'longsleeve', 'polo'].includes(kind);
     this.backgroundMaterial.color.set(env.backgroundColor);
     this.placementSurface.update(this.state.placementSurface, env.floorColor);
     this.scene.fog = new Fog(env.backgroundColor, 3, 10);

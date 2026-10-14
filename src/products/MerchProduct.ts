@@ -153,12 +153,20 @@ export class MerchProduct {
           const maps = createJerseyMaps(128, true);
           rib.normalMap = maps.normal;
           rib.roughnessMap = maps.roughness;
-          const traced = ['hoodie', 'sweatshirt', 'longsleeve'].includes(kind);
+          const traced = ['hoodie', 'sweatshirt', 'longsleeve', 'polo'].includes(kind);
           rib.normalScale.set(traced ? 1.7 : 0.6, traced ? 0.65 : 0.25);
           maps.normal.repeat.set(traced ? 1 : 36, traced ? 1 : 4);
           maps.roughness.repeat.copy(maps.normal.repeat);
           this.maps.push(...Object.values(maps));
           add(parts.ribbing, rib, 'Unprinted collar and ribbed cuffs');
+        }
+        if (parts.trim) {
+          const tape = material();
+          tape.userData.scannedCotton = false;
+          tape.userData.fixedColor = true;
+          tape.color.set('#80838a');
+          tape.side = DoubleSide;
+          add(parts.trim, tape, 'Woven neck tape and size label');
         }
         if (['polo', 'cap', 'tote', 'apron'].includes(kind)) {
           const maps = createCatalogFabricMaps(
@@ -294,7 +302,7 @@ export class MerchProduct {
       for (const m of this.materials) {
         m.roughness = state.roughness;
         m.sheen = cloth ? 0.18 * state.realism.sheen : 0;
-        if (!m.map)
+        if (!m.map && !m.userData.fixedColor)
           m.color
             .set(cloth ? (state.productColor ?? '#f4f3ee') : '#ffffff')
             .multiplyScalar(m.userData.colorScale ?? 1);
