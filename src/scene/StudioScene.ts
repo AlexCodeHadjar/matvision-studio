@@ -111,6 +111,9 @@ export class StudioScene implements SceneController {
   private readonly key = new DirectionalLight();
   private readonly productSoftbox = new RectAreaLight('#ffffff', 4, 0.45, 0.7);
   private readonly productFill = new RectAreaLight('#ffffff', 1.2, 0.35, 0.6);
+  // Soft rear softbox: catalogue back shots are lit too, and from the front
+  // it adds a faint rim that separates white cloth from the backdrop.
+  private readonly productBack = new RectAreaLight('#ffffff', 0, 0.5, 0.7);
   private readonly undersideLight = new DirectionalLight('#f0f2ed', 0);
   private stitchThreads: InstancedMesh | null = null;
   private edgeBinding: Mesh | null = null;
@@ -208,7 +211,7 @@ export class StudioScene implements SceneController {
     this.key.shadow.intensity = 0.85;
     this.scene.add(this.key);
     RectAreaLightUniformsLib.init();
-    this.scene.add(this.productSoftbox, this.productFill, this.key.target);
+    this.scene.add(this.productSoftbox, this.productFill, this.productBack, this.key.target);
     this.undersideLight.position.set(-0.7, -0.9, 0.6);
     this.scene.add(this.undersideLight);
     this.environment = createStudioEnvironment(
@@ -319,7 +322,7 @@ export class StudioScene implements SceneController {
     this.key.intensity = env.keyIntensity;
     this.key.position.fromArray(env.keyPosition);
     this.key.target.position.set(0, textile ? product.heightMm / 2000 : 0, 0);
-    this.productSoftbox.visible = this.productFill.visible = kind !== 'mat';
+    this.productSoftbox.visible = this.productFill.visible = this.productBack.visible = kind !== 'mat';
     this.key.shadow.normalBias = textile ? 0.0007 : 0.00006;
     if (kind !== 'mat') {
       const size = textile ? Math.max(product.heightMm, product.widthMm) / 720 : 0.19,
@@ -334,6 +337,11 @@ export class StudioScene implements SceneController {
       this.productFill.height = 0.6 * size;
       this.productFill.position.set(0.65 * size, center + 0.2 * size, 0.25 * size);
       this.productFill.lookAt(0, center, 0);
+      this.productBack.width = 0.5 * size;
+      this.productBack.height = 0.7 * size;
+      this.productBack.position.set(0.25 * size, center + 0.3 * size, -0.6 * size);
+      this.productBack.lookAt(0, center, 0);
+      this.productBack.intensity = referenceCut ? 1.6 : textile ? 1.1 : 0.5;
       this.key.intensity *= referenceCut ? 0.4 : textile ? 0.7 : 0.45;
     }
     this.scene.environmentIntensity = env.environmentIntensity;

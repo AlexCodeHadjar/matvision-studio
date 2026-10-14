@@ -3,6 +3,7 @@ import {
   CatmullRomCurve3,
   Float32BufferAttribute,
   SphereGeometry,
+  BoxGeometry,
   TubeGeometry,
   Vector3,
 } from 'three';
@@ -178,18 +179,21 @@ function tote(product: ProductDefinition): CatalogGeometry {
       q = Math.sin(angle),
       c = Math.max(0, Math.cos(angle));
     // 03_Шоппер_белый.jpg: body ≈ 0.83 wide : 1 tall, a touch wider at the bottom.
-    const width = 0.172 + 0.004 * (1 - v) + 0.003 * Math.sin(Math.PI * v) - 0.005 * bell(v - 0.04, 0.07);
+    const width = 0.172 + 0.007 * (1 - v) + 0.003 * Math.sin(Math.PI * v);
     const x = width * q + 0.0018 * Math.sin(v * 7) * c;
     // Lightly rounded bottom corners.
-    const bottom = 0.02 + 0.004 * bell(q + 0.87, 0.2) - 0.003 * bell(q - 0.78, 0.18) + 0.006 * smooth(0.9, 1, Math.abs(q)) ** 2;
+    // Straight sewn bottom with softly rounded corners (≈ 15 mm).
+    const bottom = 0.02 + 0.012 * smooth(0.82, 1, Math.abs(q)) ** 2 * (1 - smooth(0, 0.08, v));
     const y =
       bottom +
       0.415 * v -
-      (0.009 * c + 0.004 * bell(q + 0.32, 0.33)) * v ** 8 +
-      0.0006 * Math.sin(q * 8) * (1 - v) ** 6;
+      // Straight top edge with only a slight sag between the handles.
+      (0.003 * c + 0.0015 * bell(q + 0.32, 0.33)) * v ** 8;
     // A hanging empty bag: the walls meet in a thin bottom seam and open only
     // slightly, instead of a stuffed cushion with a rounded floor.
-    const seal = smooth(0, 0.13, v);
+    // The walls meet within ≈ 2 cm of the bottom seam, so any shading of the
+    // turn stays in a thin band instead of a wide grey strip.
+    const seal = Math.sqrt(smooth(0, 0.05, v));
     const volume = (0.011 + 0.005 * Math.sin(v * Math.PI)) * seal;
     // The photographed bag hangs almost flat: only faint creases near the
     // bottom corners, no dark trough along the bottom seam.
@@ -563,7 +567,9 @@ function cap(product: ProductDefinition): CatalogGeometry {
       c = Math.cos(a);
     const inner = new Vector3(0.101 * s, base - dip(a), 0.1 * c - 0.0005);
     // Forward reach falls off faster than the crown arc: a convex front edge.
-    const outer = new Vector3(0.106 * s, base - dip(a), 0.1 * c + 0.068 * Math.max(0, c) ** 1.7);
+    // At the temples the brim narrows to the crown radius, so its end never
+    // shows as a strip beside the crown in a front view.
+    const outer = new Vector3((0.101 + 0.005 * Math.max(0, c)) * s, base - dip(a), 0.1 * c + 0.068 * Math.max(0, c) ** 2.6);
     const p = inner.clone().lerp(outer, v);
     // Rigid forward pitch (≈ 27°) about the seam plus the pre-curve that bends
     // the extreme sides down; together they give the convex front arc.
@@ -601,35 +607,12 @@ function cap(product: ProductDefinition): CatalogGeometry {
     [0.052, 0.042, -0.084],
   ];
   details.push(strap(rearStrap, 0.016, 0.0014, 0.01));
-  for (const side of [-1, 1]) {
+  for (const side of [-1, 1])
     details.push(stitches((t) => new Vector3(side * 0.05, 0.036 + 0.012 * t, -0.087), 7, 0.00018));
-    details.push(
-      thread(
-        [
-          new Vector3(side * 0.041, 0.036, -0.093),
-          new Vector3(side * 0.053, 0.036, -0.086),
-          new Vector3(side * 0.053, 0.048, -0.086),
-          new Vector3(side * 0.041, 0.048, -0.093),
-        ],
-        0.0003,
-        24,
-        true,
-      ),
-    );
-  }
-  details.push(
-    thread(
-      [
-        new Vector3(0.013, 0.034, -0.104),
-        new Vector3(0.03, 0.034, -0.1),
-        new Vector3(0.03, 0.05, -0.1),
-        new Vector3(0.013, 0.05, -0.104),
-      ],
-      0.00075,
-      32,
-      true,
-    ),
-  );
+  // One flat metal slider on the strap instead of thin wire frames.
+  const slider = new BoxGeometry(0.017, 0.015, 0.0018);
+  slider.translate(0.021, 0.042, -0.1035);
+  details.push(slider);
   // Fabric-covered button: broader, low dome sunk into the crown.
   const button = new SphereGeometry(0.0066, 32, 16);
   button.scale(1, 0.34, 1);

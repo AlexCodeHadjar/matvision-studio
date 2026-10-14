@@ -79,12 +79,14 @@ export function createMugParts(product: ProductDefinition) {
     h = product.heightMm / 1000,
     scale = h / 0.095,
     thickness = 0.0042 * scale,
-    depth = 0.0062 * scale,
+    depth = 0.0068 * scale,
     fillet = 0.0036 * scale,
-    upperRoot = 0.0793 * scale,
-    lowerRoot = 0.0266 * scale;
+    // Root centres sit one fillet inside the arc ends, so the flared roots
+    // never rise above (or drop below) the band itself: no knobs.
+    upperRoot = (0.082 - 0.0036) * scale,
+    lowerRoot = (0.0184 + 0.0036) * scale;
   // The user's preferred design mug: a tall "ear" handle rooted ≈ 13 mm
-  // below the lip and ≈ 24 mm above the foot, reaching ≈ 37 mm out, with a
+  // below the lip and ≈ 18 mm above the foot, reaching ≈ 37 mm out, with a
   // broad flattened band (≈ 8.4 × 12.4 mm). Its crown runs out almost
   // horizontally and the outside is a smooth oval; cubic arcs keep every
   // bend tangent-continuous. Both arcs start at the fillet radius so the
@@ -115,16 +117,16 @@ export function createMugParts(product: ProductDefinition) {
     new CubicBezierCurve3(
       p(0.0036, 0.082),
       p(0.0225, 0.0828),
-      p(0.0328, 0.0718),
-      p(0.0328, 0.0525),
+      p(0.0328, 0.0712),
+      p(0.0328, 0.0505),
     ),
   );
   path.add(
     new CubicBezierCurve3(
-      p(0.0328, 0.0525),
-      p(0.0328, 0.0352),
-      p(0.0222, 0.024),
-      p(0.0036, 0.024),
+      p(0.0328, 0.0505),
+      p(0.0328, 0.031),
+      p(0.0222, 0.0184),
+      p(0.0036, 0.0184),
     ),
   );
   const positions: number[] = [],
@@ -152,8 +154,11 @@ export function createMugParts(product: ProductDefinition) {
       extension = fillet * (1 - Math.cos(u)) ** 2,
       round = fillet * (1 - Math.sin(u));
     ring((c, s) => {
-      const z = (depth + 0.0014 * scale * (1 - Math.sin(u))) * s,
-        py = y + direction * (rise * Math.sin(u) + (thickness + round) * c),
+      // Same flattened cross-section as the band, so the root joins it exactly.
+      const fc = Math.sign(c) * Math.abs(c) ** 0.8,
+        fs = Math.sign(s) * Math.abs(s) ** 0.6;
+      const z = (depth + 0.0014 * scale * (1 - Math.sin(u))) * fs,
+        py = y + direction * (rise * Math.sin(u) + (thickness + round) * fc),
         wallX = surfaceX(py, z);
       // A quarter-round fillet begins tangent to the actual cylinder and
       // ends tangent to the tube. The tiny buried boundary avoids z-fighting.
@@ -163,19 +168,21 @@ export function createMugParts(product: ProductDefinition) {
   // The root moves towards the crown while the fillet tapers. Its outside
   // contour therefore flows into the oval without the old pinched S bend.
   for (let j = 0; j < rootSteps; j++)
-    rootRing(((j / rootSteps) * Math.PI) / 2, upperRoot, 1, 0.0027 * scale);
+    rootRing(((j / rootSteps) * Math.PI) / 2, upperRoot, 1, 0.0036 * scale);
   for (let j = 0; j <= along; j++) {
     const t = j / along,
       center = path.getPointAt(t),
       tangent = path.getTangentAt(t),
       n = new Vector3(-tangent.y, tangent.x, 0).normalize();
-    ring(
-      (c, s) =>
-        new Vector3(center.x + n.x * c * thickness, center.y + n.y * c * thickness, s * depth),
-    );
+    // Flattened band: broad front/back faces with softly rounded edges.
+    ring((c, s) => {
+      const fc = Math.sign(c) * Math.abs(c) ** 0.8,
+        fs = Math.sign(s) * Math.abs(s) ** 0.6;
+      return new Vector3(center.x + n.x * fc * thickness, center.y + n.y * fc * thickness, fs * depth);
+    });
   }
   for (let j = 1; j <= rootSteps; j++)
-    rootRing(((1 - j / rootSteps) * Math.PI) / 2, lowerRoot, -1, 0.0026 * scale);
+    rootRing(((1 - j / rootSteps) * Math.PI) / 2, lowerRoot, -1, 0.0036 * scale);
   for (let j = 0; j < rings - 1; j++)
     for (let i = 0; i < around; i++) {
       const a = j * (around + 1) + i,

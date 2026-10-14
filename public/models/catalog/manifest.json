@@ -1,54 +1,54 @@
 {
   "version": 1,
-  "sourceHash": "35977f89d66b2069d8997e8c8654eefacd3c6e3a1d2e91a8e7e19aab7e36e9af",
+  "sourceHash": "b468cd7c570049958289431842955d74c7e9d0253a2e0b11369348efb00f0722",
   "models": [
     {
       "id": "hoodie-white",
       "triangles": 519830,
-      "bytes": 7558092,
+      "bytes": 7556699,
       "decodedBytes": 14869420,
-      "sha256": "c841832b3ab0f956407cff88660e36179766996a0ed44804c5fbc21e5fbf3f41",
-      "bakeMs": 4995
+      "sha256": "4ebaf144cc4906acf577ed33f877976a2daac93016559875ab1013bb58cb00bd",
+      "bakeMs": 4751
     },
     {
       "id": "sweatshirt-white",
       "triangles": 451276,
-      "bytes": 6418964,
+      "bytes": 6418639,
       "decodedBytes": 12907056,
-      "sha256": "e0f846f2a346cb3b30042fff43b61a1a3c1afe979eb5e08bc3a7bdcb2d4d3d77",
-      "bakeMs": 4476
+      "sha256": "93082727c1b31e2296f19b45e53b56e6f80e58c243a36102b15b268812084520",
+      "bakeMs": 4316
     },
     {
       "id": "tote-white",
       "triangles": 225296,
-      "bytes": 3712541,
+      "bytes": 3572347,
       "decodedBytes": 6717248,
-      "sha256": "6da78493263df810a429cbb1317f1b3092e878c40b0a5c7164e0df4c73f380de",
-      "bakeMs": 661
+      "sha256": "8a65043a3320d9e2499af7cda3897fa4fc7ff6bed7c1ecb7f6abf3f7d749fa99",
+      "bakeMs": 647
     },
     {
       "id": "longsleeve-white",
       "triangles": 508124,
-      "bytes": 7340517,
+      "bytes": 7338769,
       "decodedBytes": 14560780,
-      "sha256": "0494f9e4b9f2d7e93c3e16b27984fac8ad444617adff94b1091f805fdd904ef4",
-      "bakeMs": 4775
+      "sha256": "44cd0fab68c4391c0b6e827383c03b108a5acbc7ab812126c4b2eb9e0381ee19",
+      "bakeMs": 4627
     },
     {
       "id": "polo-white",
-      "triangles": 321840,
-      "bytes": 4442668,
-      "decodedBytes": 9242220,
-      "sha256": "3745837d0f9311d3e2a57dd60cbaae5c7698ce250fa3240ad9dcdfd64cadbf5e",
-      "bakeMs": 3426
+      "triangles": 323120,
+      "bytes": 4464913,
+      "decodedBytes": 9282540,
+      "sha256": "b73785573165714dec2564add1cd2894d8e46e023447dcdd9c7571be3939a964",
+      "bakeMs": 3276
     },
     {
       "id": "cap-white",
-      "triangles": 283792,
-      "bytes": 3823979,
-      "decodedBytes": 8902900,
-      "sha256": "7731f1fe98db429b9aa80a1ad1b1d0dd582fa60f9c7b3e84525bbc2630c0c3e5",
-      "bakeMs": 915
+      "triangles": 282844,
+      "bytes": 3813576,
+      "decodedBytes": 8873700,
+      "sha256": "255b7f9fa59380f8157d67b90e4088d8cd953fe785edb2bd2cee065966a0c742",
+      "bakeMs": 930
     },
     {
       "id": "apron-white",
@@ -56,7 +56,7 @@
       "bytes": 2668309,
       "decodedBytes": 5420628,
       "sha256": "9a476b16634a9ca694a7ef9e71d16a6f2e87d3af1b7105d34ef4f8e8b5d14729",
-      "bakeMs": 549
+      "bakeMs": 530
     }
   ]
 }
