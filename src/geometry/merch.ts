@@ -83,8 +83,10 @@ export function createMugParts(product: ProductDefinition) {
     fillet = 0.0058 * scale,
     // Root centres sit one fillet inside the arc ends, so the flared roots
     // never rise above (or drop below) the band itself: no knobs.
-    upperRoot = (0.082 - 0.0058) * scale,
-    lowerRoot = (0.0184 + 0.0058) * scale;
+    // The root centre line continues the band straight into the wall; the
+    // fillet is the flaring cross-section, not an elbow (which read as a knob).
+    upperRoot = 0.0835 * scale,
+    lowerRoot = 0.0184 * scale;
   // The user's preferred design mug: a tall "ear" handle rooted ≈ 13 mm
   // below the lip and ≈ 18 mm above the foot, reaching ≈ 37 mm out, with a
   // broad flattened band (≈ 8.4 × 12.4 mm). Its crown runs out almost
@@ -115,9 +117,9 @@ export function createMugParts(product: ProductDefinition) {
   const path = new CurvePath<Vector3>();
   path.add(
     new CubicBezierCurve3(
-      p(0.0058, 0.082),
-      p(0.0225, 0.0828),
-      p(0.0328, 0.0712),
+      p(0.0058, 0.0835),
+      p(0.0228, 0.0838),
+      p(0.0328, 0.0722),
       p(0.0328, 0.0505),
     ),
   );
@@ -169,7 +171,7 @@ export function createMugParts(product: ProductDefinition) {
   // The root moves towards the crown while the fillet tapers. Its outside
   // contour therefore flows into the oval without the old pinched S bend.
   for (let j = 0; j < rootSteps; j++)
-    rootRing(((j / rootSteps) * Math.PI) / 2, upperRoot, 1, 0.0058 * scale);
+    rootRing(((j / rootSteps) * Math.PI) / 2, upperRoot, 1, 0);
   for (let j = 0; j <= along; j++) {
     const t = j / along,
       center = path.getPointAt(t),
@@ -183,7 +185,7 @@ export function createMugParts(product: ProductDefinition) {
     });
   }
   for (let j = 1; j <= rootSteps; j++)
-    rootRing(((1 - j / rootSteps) * Math.PI) / 2, lowerRoot, -1, 0.0058 * scale);
+    rootRing(((1 - j / rootSteps) * Math.PI) / 2, lowerRoot, -1, 0);
   for (let j = 0; j < rings - 1; j++)
     for (let i = 0; i < around; i++) {
       const a = j * (around + 1) + i,

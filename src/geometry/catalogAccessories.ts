@@ -190,7 +190,7 @@ function tote(product: ProductDefinition): CatalogGeometry {
       bottom +
       0.415 * v -
       // Straight top edge with only a slight sag between the handles.
-      (0.003 * c + 0.0015 * bell(q + 0.32, 0.33)) * v ** 8;
+      (0.006 * c + 0.0015 * bell(q + 0.32, 0.33)) * v ** 8;
     // A hanging empty bag: the walls meet in a thin bottom seam and open only
     // slightly, instead of a stuffed cushion with a rounded floor.
     // The walls meet within ≈ 2 cm of the bottom seam, so any shading of the
@@ -212,7 +212,7 @@ function tote(product: ProductDefinition): CatalogGeometry {
       bell(v - 0.19, 0.23) +
       0.003 * bell(q - 0.66 + 0.21 * v, 0.09) * bell(v - 0.52, 0.36);
     // Soft vertical drag folds hanging from each sewn-on handle.
-    const handleDrag = 0.0016 * (bell(x + 0.112, 0.011) + bell(x - 0.112, 0.012)) * smooth(0.45, 0.92, v) * (1 - smooth(0.95, 1, v));
+    const handleDrag = 0.0028 * (bell(x + 0.108, 0.011) + bell(x - 0.108, 0.012)) * smooth(0.45, 0.92, v) * (1 - smooth(0.95, 1, v));
     const z =
       sign * (volume * c ** 0.66 + (lowFold + sideFold + tension + drape + handleDrag) * c * seal) +
       0.0018 * c * Math.sin(q * 5 + v * 4 + sign) * seal;
@@ -221,7 +221,7 @@ function tote(product: ProductDefinition): CatalogGeometry {
   const uForX = (x: number) => 0.5 + Math.asin(clamp(x / 0.174, -1, 1)) / Math.PI;
   // Handles are sewn on the outside at ≈ 61 % of the half width and hang as one
   // narrow loop; the rear pair sits directly behind the front pair.
-  const handleX = 0.112;
+  const handleX = 0.108;
   for (const sign of [1, -1]) {
     const face = grid(140, 144, (u, v) => at(u, v, sign), printUV(product, sign), sign < 0);
     faces.push(face);
@@ -567,7 +567,7 @@ function cap(product: ProductDefinition): CatalogGeometry {
     // outer edge is a broader half-ellipse, and the sheet bends down at the
     // sides and slightly forward, as seen from above in the reference photo.
     // The ends reach round to ±80° so they tuck along the crown sides.
-    const a = (2 * u - 1) * 1.4,
+    const a = (2 * u - 1) * 1.3,
       s = Math.sin(a),
       c = Math.cos(a);
     const inner = new Vector3(0.101 * s, base - dip(a), 0.1 * c - 0.0005);

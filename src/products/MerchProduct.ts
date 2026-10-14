@@ -158,10 +158,7 @@ export class MerchProduct {
           maps.normal.repeat.set(traced ? 1 : 36, traced ? 1 : 4);
           maps.roughness.repeat.copy(maps.normal.repeat);
           this.maps.push(...Object.values(maps));
-          const ribMesh = add(parts.ribbing, rib, 'Unprinted collar and ribbed cuffs');
-          // The thin polo collar would cast a hard key-light wedge across the
-          // inside back neck; the catalogue photo is lit softly there.
-          if (kind === 'polo') ribMesh.castShadow = false;
+          add(parts.ribbing, rib, 'Unprinted collar and ribbed cuffs');
         }
         if (parts.trim) {
           const tape = material();
@@ -172,6 +169,12 @@ export class MerchProduct {
           tape.color.set(kind === 'hoodie' ? '#d2d4d7' : kind === 'sweatshirt' ? '#4f5257' : '#80838a');
           tape.side = DoubleSide;
           add(parts.trim, tape, 'Woven tape: neck label or drawcords');
+        }
+        if (parts.threads) {
+          const thread = material();
+          thread.userData.scannedCotton = false;
+          thread.userData.colorScale = 0.8;
+          add(parts.threads, thread, 'Thread rows: hems, cuffs, neck and armholes');
         }
         if (parts.label) {
           const label = material();
