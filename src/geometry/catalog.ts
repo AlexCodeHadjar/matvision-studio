@@ -531,8 +531,8 @@ function clothing(product: ProductDefinition, kind: string): CatalogGeometry {
       // each slanted rib cuff, as in the supplied photograph.
       const sleeveMask = smooth(half + 0.008, half + 0.03, ax);
       const poloFolds = polo && reference ? (
-        shortFold(x, y, -(half - 0.032), armpitY - 0.035, 0.55, 0.011, 0.05, 0.0021) +
-        shortFold(x, y, half - 0.036, armpitY - (sign > 0 ? 0.05 : 0.025), -0.5, 0.012, 0.045, 0.0018) +
+        shortFold(x, y, -(half - 0.032), armpitY - 0.035, 0.55, 0.011, 0.05, 0.0028) +
+        shortFold(x, y, half - 0.036, armpitY - (sign > 0 ? 0.04 : 0.025), -0.55, 0.011, 0.05, 0.0026) +
         shortFold(x, y, -0.072, hemY + 0.19, 0.05, 0.02, 0.11, 0.0013 * sign) +
         sleeveMask * (
           0.0024 * bell(y - innerCuff[1] - cuffRibTop - 0.022 + (ax - sleeveCentre) * 0.28, 0.011) -
@@ -668,7 +668,11 @@ function clothing(product: ProductDefinition, kind: string): CatalogGeometry {
         const q = at(p.x, p.y + width * 0.9);
         return q.add(new Vector3(0, 0, sign * 0.0014));
       });
-      if (path === hem) details.push(line(innerStitch, 0.00029, 96));
+      if (path === hem) {
+        if (reference && !ribbed && !polo)
+          for (const k of [0.62, 0.86]) details.push(line(bandLine(k, 0.0004), 0.00024, 96));
+        else details.push(line(innerStitch, 0.00029, 96));
+      }
       if (reference && !ribbed && !polo && path !== hem)
         // Twin-needle coverstitch on the jersey sleeve hems.
         for (const k of [0.72, 0.9])
@@ -754,7 +758,7 @@ function clothing(product: ProductDefinition, kind: string): CatalogGeometry {
           const x = side * (0.178 - (y - 0.204) * 0.34);
           return pocketAt(x, y).add(new Vector3(0, 0, 0.0006));
         });
-        details.push(line(opening, 0.0011, 64));
+        details.push(line(opening, 0.0007, 64));
       }
     }
     if (polo && reference) {
@@ -775,13 +779,14 @@ function clothing(product: ProductDefinition, kind: string): CatalogGeometry {
       const pw = 22 * scale;
       const placketAt = (u: number, v: number) => {
         const x = (u * 2 - 1) * pw, y = bottom + (top - bottom) * v;
+        // A sewn-in placket: a low, softly rounded double layer, not a plate.
         const edge = Math.min(u, 1 - u, v * 3);
-        return at(x, y).add(new Vector3(0, 0, 0.0004 + 0.0012 * smooth(0, 0.08, edge)));
+        return at(x, y).add(new Vector3(0, 0, 0.0002 + 0.0007 * smooth(0, 0.3, edge)));
       };
       details.push(grid(12, 30, placketAt, (_p, u, v) => [u * 2 * pw / 0.006, v * (top - bottom) / 0.006]));
-      for (const u of [0.04, 0.96])
-        details.push(line(Array.from({ length: 24 }, (_, i) => placketAt(u, i / 23).add(new Vector3(0, 0, 0.0004))), 0.00026, 32));
-      const box = [[0.12, 0.03], [0.88, 0.03], [0.88, 0.21], [0.12, 0.21]].map(([u, v]) => placketAt(u!, v!).add(new Vector3(0, 0, 0.0006)));
+      for (const u of [0.09, 0.91])
+        details.push(line(Array.from({ length: 24 }, (_, i) => placketAt(u, i / 23).add(new Vector3(0, 0, 0.0003))), 0.00022, 32));
+      const box = [[0.12, 0.03], [0.88, 0.03], [0.88, 0.21], [0.12, 0.21]].map(([u, v]) => placketAt(u!, v!).add(new Vector3(0, 0, 0.0003)));
       for (const [a, b] of [[0, 1], [1, 2], [2, 3], [3, 0], [0, 2], [1, 3]])
         details.push(line([box[a!]!, box[a!]!.clone().lerp(box[b!]!, 0.5), box[b!]!], 0.00024, 8));
       // Overlap fold of the right-hand placket leaf.
@@ -924,7 +929,9 @@ function clothing(product: ProductDefinition, kind: string): CatalogGeometry {
     };
     const hood = grid(128, 48, hoodAt);
     details.push(hood);
-    linings.push(inside(hood, 0.0025));
+    // A thin offset: thicker linings poked through the sharp fold at the
+    // corners of the opening.
+    linings.push(inside(hood, 0.0005));
     // Roll the actual opening edge back to its lining. Both boundaries use the
     // very same shell positions, leaving a real hollow opening without a
     // detached flared ring, sharp strips, or a cap over the cavity.
@@ -935,8 +942,11 @@ function clothing(product: ProductDefinition, kind: string): CatalogGeometry {
       const normal = along.clone().cross(outward).normalize();
       // The double-layer front edges are visibly thick where they cross.
       const front = smooth(0.4, 0.95, Math.cos(u * TAU));
-      return p.addScaledVector(normal, -(0.0016 + 0.0022 * front) * (1 - Math.cos(Math.PI * v)))
-        .addScaledVector(outward, (0.0007 + 0.0012 * front) * Math.sin(Math.PI * v));
+      // At the two side corners the top edge folds under the descending
+      // front edge; the roll tapers out there instead of ending as a tube.
+      const corner = 1 - 0.9 * bell(Math.cos(u * TAU) - 0.08, 0.16);
+      return p.addScaledVector(normal, -(0.0016 + 0.0022 * front) * corner * (1 - Math.cos(Math.PI * v)))
+        .addScaledVector(outward, (0.0007 + 0.0012 * front) * corner * Math.sin(Math.PI * v));
     };
     details.push(grid(192, 12, rimRoll));
     details.push(line(Array.from({ length: 128 }, (_, i) => hoodAt(i / 128, 0.91)), 0.00025, 192, true));
@@ -948,7 +958,16 @@ function clothing(product: ProductDefinition, kind: string): CatalogGeometry {
       ),
     );
     for (const side of [-1, 1]) {
-      const exitU = side > 0 ? 0.056 : 0.944, exitV = 0.54;
+      // Eyelets sit where the photo shows them, (447,150) / (548,150): search
+      // the front of the hood for the closest surface point to that target.
+      const target = reference ? fromPhoto([side > 0 ? 548 : 447, 150]) : [side * 0.045, 0.722];
+      let exitU = side > 0 ? 0.056 : 0.944, exitV = 0.54, best = Infinity;
+      for (let i = 0; i <= 60; i++)
+        for (let j = 0; j <= 40; j++) {
+          const u = side > 0 ? 0.005 + 0.2 * i / 60 : 0.995 - 0.2 * i / 60, v = 0.2 + 0.6 * j / 40;
+          const q = hoodAt(u, v), d = (q.x - target[0]!) ** 2 + (q.y - target[1]!) ** 2 - 0.05 * q.z * q.z;
+          if (d < best) { best = d; exitU = u; exitV = v; }
+        }
       const along = hoodAt(exitU + 0.0001, exitV).sub(hoodAt(exitU - 0.0001, exitV)).normalize();
       const upward = hoodAt(exitU, exitV + 0.0001).sub(hoodAt(exitU, exitV - 0.0001)).normalize();
       const normal = along.clone().cross(upward).normalize();

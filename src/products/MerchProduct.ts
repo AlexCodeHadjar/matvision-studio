@@ -194,7 +194,7 @@ export class MerchProduct {
               m.normalMap = maps.normal;
               m.roughnessMap = maps.roughness;
               // Piqué cells must read at catalogue distance; canvas and twill stay subtle.
-              m.normalScale.setScalar(kind === 'polo' ? 1.25 : kind === 'cap' ? 0.9 : 0.8);
+              m.normalScale.setScalar(kind === 'polo' ? 1.4 : kind === 'cap' ? 0.9 : kind === 'tote' ? 1.2 : 0.8);
             }
         } else await this.loadCottonMaps(anisotropy);
       });

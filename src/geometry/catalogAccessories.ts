@@ -183,7 +183,9 @@ function tote(product: ProductDefinition): CatalogGeometry {
     const x = width * q + 0.0018 * Math.sin(v * 7) * c;
     // Lightly rounded bottom corners.
     // Straight sewn bottom with softly rounded corners (≈ 15 mm).
-    const bottom = 0.02 + 0.012 * smooth(0.82, 1, Math.abs(q)) ** 2 * (1 - smooth(0, 0.08, v));
+    // Round bottom corners (r ≈ 16 mm): lift the bottom edge on a circular arc.
+    const into = Math.max(0, width * Math.abs(q) - (width - 0.016));
+    const bottom = 0.02 + (0.016 - Math.sqrt(Math.max(0, 0.016 ** 2 - into ** 2))) * (1 - smooth(0, 0.06, v));
     const y =
       bottom +
       0.415 * v -
@@ -209,15 +211,17 @@ function tote(product: ProductDefinition): CatalogGeometry {
       (0.0008 * bell(q + 0.22 - 0.12 * v, 0.14) - 0.0005 * bell(q - 0.13 + 0.05 * v, 0.10)) *
       bell(v - 0.19, 0.23) +
       0.003 * bell(q - 0.66 + 0.21 * v, 0.09) * bell(v - 0.52, 0.36);
+    // Soft vertical drag folds hanging from each sewn-on handle.
+    const handleDrag = 0.0016 * (bell(x + 0.112, 0.011) + bell(x - 0.112, 0.012)) * smooth(0.45, 0.92, v) * (1 - smooth(0.95, 1, v));
     const z =
-      sign * (volume * c ** 0.66 + (lowFold + sideFold + tension + drape) * c * seal) +
+      sign * (volume * c ** 0.66 + (lowFold + sideFold + tension + drape + handleDrag) * c * seal) +
       0.0018 * c * Math.sin(q * 5 + v * 4 + sign) * seal;
     return new Vector3(x, y, z);
   };
   const uForX = (x: number) => 0.5 + Math.asin(clamp(x / 0.174, -1, 1)) / Math.PI;
   // Handles are sewn on the outside at ≈ 61 % of the half width and hang as one
   // narrow loop; the rear pair sits directly behind the front pair.
-  const handleX = 0.105;
+  const handleX = 0.112;
   for (const sign of [1, -1]) {
     const face = grid(140, 144, (u, v) => at(u, v, sign), printUV(product, sign), sign < 0);
     faces.push(face);
@@ -454,12 +458,12 @@ function cap(product: ProductDefinition): CatalogGeometry {
   // Structured five-panel crown as in 06_Бейсболка_белый.png: one wide
   // front panel (no centre seam) whose side seams reach the temples.
   const boundaries = [
-    -Math.PI * 0.35,
-    Math.PI * 0.35,
-    Math.PI * 0.675,
+    -Math.PI * 0.32,
+    Math.PI * 0.32,
+    Math.PI * 0.66,
     Math.PI,
-    Math.PI * 1.325,
-    Math.PI * 1.65,
+    Math.PI * 1.34,
+    Math.PI * 1.68,
   ];
   // The brim seam is a "smile": the crown's lower edge dips towards the
   // temples where the pre-curved brim bends down.
@@ -503,7 +507,7 @@ function cap(product: ProductDefinition): CatalogGeometry {
     return g;
   };
   const front = fixCrownPole(
-    grid(110, 94, (u, v) => crown(-Math.PI * 0.35 + u * Math.PI * 0.7, v), printUV(product)),
+    grid(110, 94, (u, v) => crown(-Math.PI * 0.32 + u * Math.PI * 0.64, v), printUV(product)),
   );
   inner.push(lining(front, 0.0017));
   for (let panel = 1; panel < 5; panel++) {
@@ -539,7 +543,7 @@ function cap(product: ProductDefinition): CatalogGeometry {
   details.push(
     thread(
       Array.from({ length: 241 }, (_, i) => crown((i / 240) * TAU, 0)),
-      0.0009,
+      0.0004,
       300,
       true,
     ),
@@ -562,7 +566,8 @@ function cap(product: ProductDefinition): CatalogGeometry {
     // Pre-curved brim: its inner edge follows the crown base over ±72°, the
     // outer edge is a broader half-ellipse, and the sheet bends down at the
     // sides and slightly forward, as seen from above in the reference photo.
-    const a = (2 * u - 1) * 1.26,
+    // The ends reach round to ±80° so they tuck along the crown sides.
+    const a = (2 * u - 1) * 1.4,
       s = Math.sin(a),
       c = Math.cos(a);
     const inner = new Vector3(0.101 * s, base - dip(a), 0.1 * c - 0.0005);
@@ -582,7 +587,7 @@ function cap(product: ProductDefinition): CatalogGeometry {
     ...Array.from({ length: 161 }, (_, i) => brimAt(i / 160, 1)),
     ...Array.from({ length: 159 }, (_, i) => brimAt(1 - (i + 1) / 160, 0)),
   ];
-  details.push(thread(brimOutline, 0.0011, 320, true));
+  details.push(thread(brimOutline, 0.0006, 320, true));
   // Eight rows of topstitching, each a constant distance from the front edge,
   // so they follow its convex arc and end where the brim narrows.
   const reach = (u: number) => brimAt(u, 1).distanceTo(brimAt(u, 0));

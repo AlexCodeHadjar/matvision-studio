@@ -8,7 +8,9 @@ export function createCatalogFabricMaps(kind: string, widthM: number, heightM: n
   const height = (u: number, v: number) => {
     const x = u * Math.PI * 16,
       y = v * Math.PI * 16;
-    if (kind === 'polo') return 0.2 * Math.cos(x) * Math.cos(y) + 0.08 * Math.sin(x * 2 + y);
+    // Piqué: a honeycomb of small raised cells (three cosine waves at 60°).
+    if (kind === 'polo')
+      return 0.24 * (Math.cos(x) + Math.cos(0.5 * x + 0.866 * y) + Math.cos(0.5 * x - 0.866 * y)) / 3;
     if (kind === 'cap') return 0.22 * Math.sin(x - y) + 0.06 * Math.cos(x * 2 + y);
     return 0.14 * Math.cos(x) + 0.14 * Math.cos(y) + 0.1 * Math.cos(x * 0.5) * Math.cos(y * 0.5);
   };

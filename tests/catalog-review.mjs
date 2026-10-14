@@ -71,7 +71,8 @@ try {
     if (process.env.REVIEW_EXTRA) views.push(...JSON.parse(process.env.REVIEW_EXTRA));
     // Long-lens view framed like the supplied catalogue photographs.
     if (!mug) {
-      const fit = (p.kind === 'cap' ? 0.27 : h * 1.12) / 2 / Math.tan((6 * Math.PI) / 180);
+      // Frame like each photo: the tote fills ≈ 91.5 % of its frame height.
+      const fit = (p.kind === 'cap' ? 0.27 : h * (p.kind === 'tote' ? 1.093 : 1.12)) / 2 / Math.tan((6 * Math.PI) / 180);
       views.push(p.kind === 'cap'
         ? ['reference', [0, 0.08 + fit * 0.14, fit * 0.99], [0, 0.07, 0.03], 12]
         : ['reference', [0, center, fit], [0, center, 0], 12]);
