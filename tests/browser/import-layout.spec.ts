@@ -9,6 +9,7 @@ import {
   encodedFixture,
   importFixture,
   setSlider,
+  selectProduct,
 } from '../helpers/studio';
 import { changedPixelFraction } from '../helpers/image-evidence';
 import { redCircleBounds } from '../helpers/pixel-probes';
@@ -83,7 +84,7 @@ test.describe('Checkpoint B @B', () => {
     );
     await expect(page.getByTestId('print-quality')).toContainText('51 DPI');
     for (const id of ['mousepad-400x450', 'deskmat-900x400']) {
-      await page.getByRole('combobox', { name: 'Продукт', exact: true }).selectOption(id);
+      await selectProduct(page, id);
       await expect.poll(async () => (await diagnostics(page)).productId).toBe(id);
       await expect(page.getByTestId('source-info')).toContainText('landscape-grid.png');
       expect((await diagnostics(page)).sourceWidthPx).toBe(1800);
@@ -128,7 +129,7 @@ test.describe('Checkpoint B @B', () => {
   }, info) => {
     await importFixture(page, 'uv-circle.png');
     for (const id of ['deskmat-900x400', 'mousepad-400x450']) {
-      await page.getByRole('combobox', { name: 'Продукт', exact: true }).selectOption(id);
+      await selectProduct(page, id);
       await camera(page, 'Сверху');
       for (const mode of ['cover', 'contain']) {
         await page.getByRole('combobox', { name: 'Размещение', exact: true }).selectOption(mode);

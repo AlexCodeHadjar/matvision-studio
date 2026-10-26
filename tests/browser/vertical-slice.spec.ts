@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import { changedPixelFraction, imageEvidence } from '../helpers/image-evidence';
 import { parseDiagnostics } from '../helpers/scene-diagnostics';
-import { settleCamera } from '../helpers/studio';
+import { selectProduct, settleCamera } from '../helpers/studio';
 
 test('real WebGL2 studio shows a volumetric desk mat and responds to orbit', async ({
   page,
@@ -79,9 +79,7 @@ test('both catalogue sizes render and the low angle exposes the physical edge', 
     contentType: 'image/png',
   });
 
-  await page
-    .getByRole('combobox', { name: 'Продукт', exact: true })
-    .selectOption('mousepad-400x450');
+  await selectProduct(page, 'mousepad-400x450');
   await expect
     .poll(async () => parseDiagnostics(await output.textContent()).productId)
     .toBe('mousepad-400x450');
@@ -97,9 +95,7 @@ test('both catalogue sizes render and the low angle exposes the physical edge', 
   expect(imageEvidence(mousepadPixels).luminanceVariance).toBeGreaterThan(4);
   await testInfo.attach('mousepad-perspective', { body: mousepadPixels, contentType: 'image/png' });
 
-  await page
-    .getByRole('combobox', { name: 'Продукт', exact: true })
-    .selectOption('deskmat-900x400');
+  await selectProduct(page, 'deskmat-900x400');
   await expect
     .poll(async () => parseDiagnostics(await output.textContent()).productId)
     .toBe('deskmat-900x400');

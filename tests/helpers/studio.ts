@@ -26,6 +26,10 @@ export const test = base.extend<{ studio: Page }>({
 });
 export { expect };
 export const fixturePath = (name: string) => resolve('tests/fixtures', name);
+export async function selectProduct(page: Page, productId: string) {
+  await page.getByLabel('Размер коврика', { exact: true }).click();
+  await page.locator(`.mat-size-rows button[data-product-id="${productId}"]`).click();
+}
 export const canvas = (page: Page) => page.getByTestId('viewport').locator('canvas');
 export const diagnostics = async (page: Page) =>
   parseDiagnostics(await page.getByTestId('scene-diagnostics').textContent());

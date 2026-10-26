@@ -10,6 +10,7 @@ import {
   ready,
   setSlider,
   settleCamera,
+  selectProduct,
 } from '../helpers/studio';
 import { changedPixelFraction, imageEvidence } from '../helpers/image-evidence';
 
@@ -18,9 +19,7 @@ test.describe('Persistence and export @E', () => {
     studio: page,
   }, info) => {
     await importFixture(page, 'portrait-grid.png');
-    await page
-      .getByRole('combobox', { name: 'Продукт', exact: true })
-      .selectOption('mousepad-400x450');
+    await selectProduct(page, 'mousepad-400x450');
     await page.getByRole('combobox', { name: 'Размещение', exact: true }).selectOption('contain');
     await page
       .getByRole('combobox', { name: 'Материал', exact: true })
@@ -65,8 +64,11 @@ test.describe('Persistence and export @E', () => {
     await reopened.getByTestId('project-input').setInputFiles(savedPath);
     await expect(reopened.getByTestId('source-info')).toContainText('portrait-grid.png');
     await settleCamera(reopened);
+    await expect(reopened.locator('.mat-size-rows button[aria-pressed="true"]')).toHaveAttribute(
+      'data-product-id',
+      'mousepad-400x450',
+    );
     for (const [label, value] of [
-      ['Продукт', 'mousepad-400x450'],
       ['Размещение', 'contain'],
       ['Материал', 'gaming-fabric'],
       ['Край', 'stitched'],
