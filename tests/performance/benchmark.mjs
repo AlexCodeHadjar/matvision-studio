@@ -240,7 +240,7 @@ try {
   await sample('8K source · Balanced · turntable');
   await page.getByLabel('Turntable · вращать коврик').uncheck();
   await page.getByRole('combobox', { name: 'Край', exact: true }).selectOption('stitched');
-  await page.getByLabel('Линейка · реальный масштаб').check();
+  await page.getByLabel('Линейки · размеры коврика').check();
   await settle();
   report.replacementBaseline = await diagnostics();
   for (let index = 0; index < 12; index++) {

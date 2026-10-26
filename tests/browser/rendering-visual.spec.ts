@@ -176,7 +176,7 @@ test.describe('PBR and color golden scenes @C @D', () => {
     }
     await camera(page, 'Перспектива');
     const beforeReference = await canvas(page).screenshot();
-    await page.getByRole('checkbox', { name: 'Линейка · реальный масштаб', exact: true }).check();
+    await page.getByRole('checkbox', { name: 'Линейки · размеры коврика', exact: true }).check();
     expect(changedPixelFraction(beforeReference, await canvas(page).screenshot())).toBeGreaterThan(
       0.001,
     );
