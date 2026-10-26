@@ -1,6 +1,7 @@
 import { MathUtils, PerspectiveCamera, Spherical, Vector3 } from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import type { CameraPreset, CameraState, ProductDefinition } from '../contracts';
+import { rulerFrameProduct } from '../geometry/rulers';
 import {
   CAMERA_CLEARANCE,
   createOrbitTransition,
@@ -13,6 +14,7 @@ export class CameraRig {
   readonly controls: OrbitControls;
   private preset: CameraPreset = 'perspective';
   private transition: OrbitTransition | null = null;
+  private referenceMode = false;
   constructor(
     readonly camera: PerspectiveCamera,
     canvas: HTMLCanvasElement,
@@ -61,7 +63,8 @@ export class CameraRig {
     const from = new Spherical().setFromVector3(
       this.camera.position.clone().sub(this.controls.target),
     );
-    const to = presetOrbit(preset, product, thicknessMm, this.camera.fov, this.camera.aspect);
+    const framedProduct = this.referenceMode ? rulerFrameProduct(product) : product;
+    const to = presetOrbit(preset, framedProduct, thicknessMm, this.camera.fov, this.camera.aspect);
     this.controls.maxDistance = Math.max(3, to.radius * 1.5);
     this.preset = preset;
     this.transition = createOrbitTransition(
@@ -80,6 +83,29 @@ export class CameraRig {
     );
     this.controls.minPolarAngle = 0.001;
     this.controls.maxPolarAngle = Math.PI - 0.001;
+  }
+  setReferenceMode(enabled: boolean, product: ProductDefinition, thicknessMm: number) {
+    this.referenceMode = enabled;
+    if (!enabled || this.preset === 'underside') return;
+    this.clearMomentum();
+    const from = new Spherical().setFromVector3(
+      this.camera.position.clone().sub(this.controls.target),
+    );
+    const framed = rulerFrameProduct(product);
+    framed.defaultCameraFraming = {
+      ...framed.defaultCameraFraming,
+      position: this.camera.position.clone().sub(this.controls.target).toArray(),
+      target: [0, 0, 0],
+    };
+    const to = presetOrbit('perspective', framed, thicknessMm, this.camera.fov, this.camera.aspect);
+    this.transition = createOrbitTransition(
+      from,
+      to,
+      this.controls.target,
+      new Vector3(0, thicknessMm / 2000, 0),
+      product,
+      performance.now(),
+    );
   }
   update(now: number, thicknessMm: number) {
     if (this.transition) {

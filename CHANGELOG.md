@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.10 — 2026-10-26
+
+- Replaced the 500 mm reference sample with full-width and full-height centimetre rulers whose endpoints align with the selected mat's edges, including exact non-round sizes such as 18 × 22 cm.
+- Added prominent total dimensions, readable screen-size text and automatic suppression of crowded intermediate numbers at shallow viewing angles. The camera makes room for the rulers when measurement is enabled.
+- Rulers follow mat rotation and are hidden during bending or when viewing the underside. Their textures and geometry are disposed when changing products.
+
 ## 0.1.9 — 2026-10-26
 
 - Added 80 × 30, 70 × 30, 40 × 30, 40 × 40, 18 × 22, 20 × 24, 20 × 25 and 25 × 25 cm mats, each with a default thickness of 3 mm and a full-size print area.

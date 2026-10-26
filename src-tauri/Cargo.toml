@@ -1,6 +1,6 @@
 [package]
 name = "matvision-studio"
-version = "0.1.9"
+version = "0.1.10"
 description = "MatVision Studio desktop print visualization"
 edition = "2021"
 rust-version = "1.88"

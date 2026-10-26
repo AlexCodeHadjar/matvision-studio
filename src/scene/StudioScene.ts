@@ -1,15 +1,10 @@
 import {
   BackSide,
   BoxGeometry,
-  BufferGeometry,
-  CanvasTexture,
   DirectionalLight,
-  Float32BufferAttribute,
   Group,
   InstancedBufferAttribute,
   InstancedMesh,
-  LineBasicMaterial,
-  LineSegments,
   Mesh,
   MeshBasicMaterial,
   PCFShadowMap,
@@ -18,7 +13,6 @@ import {
   Raycaster,
   Scene,
   Sprite,
-  SpriteMaterial,
   Vector2,
   Vector3,
   WebGLRenderer,
@@ -42,7 +36,8 @@ import { createFabricMaterial, createInitialFabric } from '../materials/fabric';
 import { createRubberMaterial } from '../materials/rubber';
 import { createStitchedMaterial } from '../materials/stitched';
 import { createPlacementSurfaceMaterial } from '../materials/placementSurface';
-import { configureColorPipeline, markColorTexture } from '../color/ColorPipeline';
+import { configureColorPipeline } from '../color/ColorPipeline';
+import { DimensionRulers } from './DimensionRulers';
 import { createStudioEnvironment } from './environment';
 import { QUALITY_SETTINGS } from './quality';
 import { estimateSceneTextureBytes } from './performance';
@@ -110,7 +105,7 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
   private stitchThreads: InstancedMesh | null = null;
   private edgeBinding: Mesh | null = null;
   private rollDeformer = new MatRollDeformer();
-  private readonly references = new Group();
+  private readonly references = new DimensionRulers();
   private readonly resizeObserver: ResizeObserver;
   private readonly raycaster = new Raycaster();
   private surface: Mesh | null = null;
@@ -234,6 +229,7 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
     this.rebuildMat();
     this.pipeline.configure(state.realism.mode === 'detailed', state.realism.contactShadow);
     this.resize();
+    this.rig.setReferenceMode(state.referenceMode, product, state.thicknessMm);
     this.animate();
     log('RENDERER', 'initialized', {
       backend: 'WebGL2',
@@ -315,6 +311,16 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
     this.adapter.syncScene(scene);
   }
   renderFrame() {
+    this.references.position.copy(this.mat.position);
+    this.references.quaternion.copy(this.mat.quaternion);
+    const deformed =
+      this.state.rollAmount > 0.0001 ||
+      (this.showcase && !['moving-light', 'edge-flyby'].includes(this.showcase.id));
+    this.references.visible = this.state.referenceMode && this.floor.visible && !deformed;
+    if (this.references.visible) {
+      this.camera.updateMatrixWorld();
+      this.references.updateLabels(this.camera, this.host.clientWidth, this.host.clientHeight);
+    }
     this.pipeline.render();
   }
   setSoftboxLighting(enabled: boolean): boolean {
@@ -370,51 +376,10 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
     this.camera.updateProjectionMatrix();
   };
   private clearReferences() {
-    this.references.traverse((object) => {
-      if (object instanceof LineSegments) {
-        object.geometry.dispose();
-        const m = object.material;
-        if (m instanceof LineBasicMaterial) m.dispose();
-      }
-      if (object instanceof Sprite) {
-        object.material.map?.dispose();
-        object.material.dispose();
-      }
-    });
-    this.references.clear();
+    this.references.disposeContents();
   }
   private rebuildReferences() {
-    this.clearReferences();
-    const product = getProduct(this.state.productId);
-    const width = Math.min(product.widthMm / 1000, 0.5),
-      z = product.heightMm / 2000 + 0.06;
-    const positions: number[] = [-width / 2, 0.001, z, width / 2, 0.001, z];
-    for (let mm = 0; mm <= Math.round(width * 1000); mm += 10) {
-      const x = -width / 2 + mm / 1000;
-      positions.push(x, 0.001, z, x, 0.001, z + (mm % 50 === 0 ? 0.012 : 0.005));
-      if (mm % 100 === 0) {
-        const c = document.createElement('canvas');
-        c.width = 128;
-        c.height = 64;
-        const ctx = c.getContext('2d');
-        if (!ctx) continue;
-        ctx.fillStyle = '#596a58';
-        ctx.font = '28px Segoe UI';
-        ctx.textAlign = 'center';
-        ctx.fillText(`${mm} mm`, 64, 40);
-        const texture = new CanvasTexture(c);
-        markColorTexture(texture);
-        const label = new Sprite(
-          new SpriteMaterial({ map: texture, transparent: true, depthWrite: false }),
-        );
-        label.position.set(x, 0.01, z + 0.031);
-        label.scale.set(0.05, 0.025, 1);
-        this.references.add(label);
-      }
-    }
-    const geometry = new BufferGeometry();
-    geometry.setAttribute('position', new Float32BufferAttribute(positions, 3));
-    this.references.add(new LineSegments(geometry, new LineBasicMaterial({ color: '#71806a' })));
+    this.references.rebuild(getProduct(this.state.productId));
     this.references.visible = this.state.referenceMode;
   }
   private rebuildMat() {
@@ -658,6 +623,9 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
       this.pipeline.configure(state.realism.mode === 'detailed', state.realism.contactShadow);
     this.printLayer.update(this.sourceDimensions, product.printableArea, state.layout);
     this.references.visible = state.referenceMode && !this.rig.underside;
+    if (state.referenceMode !== before.referenceMode) {
+      this.rig.setReferenceMode(state.referenceMode, product, state.thicknessMm);
+    }
     if (newProduct) this.setCameraPreset('perspective');
     if (state.environment !== before.environment || qualityChanged) this.replaceEnvironment();
     else if (newProduct || state.placementSurface !== before.placementSurface)
@@ -996,6 +964,13 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
       sourceWidthPx: this.sourceDimensions.widthPx,
       sourceHeightPx: this.sourceDimensions.heightPx,
       matRotationY: this.mat.rotation.y,
+      rulers: {
+        visible: this.references.visible,
+        widthMm: this.references.widthMm,
+        heightMm: this.references.heightMm,
+        rotationY: this.references.rotation.y,
+        units: 'cm',
+      },
       showcase: this.showcase?.id ?? null,
     };
   }

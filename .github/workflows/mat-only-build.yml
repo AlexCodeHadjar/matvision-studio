@@ -29,7 +29,7 @@ jobs:
       - run: pnpm tauri build --no-bundle
       - uses: actions/upload-artifact@v4
         with:
-          name: MatVisionStudio-MatOnly-0.1.9-Windows-x64
+          name: MatVisionStudio-MatOnly-0.1.10-Windows-x64
           path: |
             src-tauri/target/release/matvision-studio.exe
             docs/licenses/

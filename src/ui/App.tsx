@@ -574,8 +574,11 @@ export function App() {
                 checked={state.referenceMode}
                 onChange={(e) => patch({ referenceMode: e.target.checked })}
               />
-              Линейка · реальный масштаб
+              Линейки · размеры коврика
             </label>
+            {state.referenceMode && (
+              <p className="note">Ширина и длина в сантиметрах. Во время изгиба линейки скрыты.</p>
+            )}
           </section>
           <RollControls
             value={state.rollAmount}
