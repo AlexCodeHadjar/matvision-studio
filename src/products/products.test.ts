@@ -20,6 +20,33 @@ describe('physical product catalogue', () => {
     for (const product of PRODUCTS) expect(() => validateProduct(product)).not.toThrow();
   });
 
+  it('includes the requested centimetre sizes with a full print area and 3 mm thickness', () => {
+    const sizes: readonly [number, number][] = [
+      [80, 30],
+      [70, 30],
+      [40, 30],
+      [40, 40],
+      [18, 22],
+      [20, 24],
+      [20, 25],
+      [25, 25],
+    ];
+    for (const [width, height] of sizes) {
+      const product = getProduct(`mat-${width * 10}x${height * 10}`);
+      expect([product.widthMm, product.heightMm, product.thicknessMm]).toEqual([
+        width * 10,
+        height * 10,
+        3,
+      ]);
+      expect(product.printableArea).toEqual({
+        xMm: 0,
+        yMm: 0,
+        widthMm: width * 10,
+        heightMm: height * 10,
+      });
+    }
+  });
+
   it('rejects an unknown product and nonphysical input', () => {
     expect(() => getProduct('unavailable')).toThrow('Unknown product');
     expect(() => mmToMetres(Infinity)).toThrow();

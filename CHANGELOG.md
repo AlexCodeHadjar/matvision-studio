@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.9 — 2026-10-26
+
+- Added 80 × 30, 70 × 30, 40 × 30, 40 × 40, 18 × 22, 20 × 24, 20 × 25 and 25 × 25 cm mats, each with a default thickness of 3 mm and a full-size print area.
+- Replaced the plain product select with a size menu. Every row shows a white rectangle on the right, with a common physical scale so landscape, portrait and square mats are easy to compare. The menu supports keyboard navigation and Escape/outside-click closing.
+- Preserved the existing 90 × 40 and 40 × 45 cm profiles for saved projects. This branch contains only mats.
+
 ## 0.1.8 — 2026-09-23
 
 - Fixed Ultimate PNG saving in the Windows app. The completed image is decoded locally before binary IPC instead of requesting its `data:` URL through WebView2's restricted `connect-src`. A Cycles status-file "done" is held at "rendering" until Blender exits successfully and the PNG is read, preventing an intermittent premature ready state. The save button activates only after the PNG is displayed successfully; nearby status explains when it is ready and whether saving succeeds, is cancelled or fails.

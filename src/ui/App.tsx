@@ -8,7 +8,7 @@ import type {
   MaterialTarget,
   MaterialMapKind,
 } from '../contracts';
-import { PRODUCTS, getProduct } from '../products';
+import { getProduct } from '../products';
 import { log, logError } from '../app/log';
 import {
   createDefaultLayout,
@@ -29,6 +29,7 @@ import {
 } from '../native';
 import type { StudioScene } from '../scene/StudioScene';
 import { Viewport } from './Viewport';
+import { ProductPicker } from './ProductPicker';
 import { RollControls } from './RollControls';
 import { RealismControls } from './RealismControls';
 import { PhotoDialog } from './PhotoDialog';
@@ -403,29 +404,18 @@ export function App() {
             <small>YOUR PRINT. IN PERSPECTIVE.</small>
           </div>
         </div>
-        <label className="product-select">
-          <span>ПРОДУКТ</span>
-          <select
-            aria-label="Продукт"
-            value={state.productId}
-            onChange={(e) => {
-              const p = getProduct(e.target.value);
-              setState((s) => ({
-                ...s,
-                productId: p.id,
-                thicknessMm: p.thicknessMm,
-                camera: { ...p.defaultCameraFraming, preset: 'perspective' },
-              }));
-              setActiveCamera('perspective');
-            }}
-          >
-            {PRODUCTS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.displayName} · {p.widthMm} × {p.heightMm} мм
-              </option>
-            ))}
-          </select>
-        </label>
+        <ProductPicker
+          value={state.productId}
+          onChange={(p) => {
+            setState((s) => ({
+              ...s,
+              productId: p.id,
+              thicknessMm: p.thicknessMm,
+              camera: { ...p.defaultCameraFraming, preset: 'perspective' },
+            }));
+            setActiveCamera('perspective');
+          }}
+        />
         <div className="toolbar-actions">
           <button
             className="primary-action"

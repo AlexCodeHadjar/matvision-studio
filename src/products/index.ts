@@ -12,7 +12,36 @@ export function aspectRatio(width: number, height: number): number {
   return width / height;
 }
 
+function matSize(widthMm: number, heightMm: number): ProductDefinition {
+  const scale = Math.max(widthMm, heightMm) / 900;
+  return {
+    id: `mat-${widthMm}x${heightMm}`,
+    displayName: `Коврик ${widthMm / 10} × ${heightMm / 10} см`,
+    widthMm,
+    heightMm,
+    thicknessMm: 3,
+    cornerRadiusMm: 12,
+    edgePreset: 'standard-cut',
+    surfaceMaterialPreset: 'fine-weave',
+    defaultCameraFraming: {
+      position: [0.7 * scale, 0.85 * scale, 0.85 * scale],
+      target: [0, 0.0015, 0],
+      fovDeg: 35,
+    },
+    printableArea: { xMm: 0, yMm: 0, widthMm, heightMm },
+    bleedMm: 3,
+  };
+}
+
 export const PRODUCTS: readonly ProductDefinition[] = [
+  matSize(800, 300),
+  matSize(700, 300),
+  matSize(400, 300),
+  matSize(400, 400),
+  matSize(180, 220),
+  matSize(200, 240),
+  matSize(200, 250),
+  matSize(250, 250),
   {
     id: 'deskmat-900x400',
     displayName: 'Desk Mat',
