@@ -2,7 +2,7 @@ name: Build mat-only desktop
 
 on:
   push:
-    branches: [codex/mat-only-sizes]
+    branches: [codex/mat-only-sizes, realtime-only]
   workflow_dispatch:
 
 permissions:
@@ -29,7 +29,7 @@ jobs:
       - run: pnpm tauri build --no-bundle
       - uses: actions/upload-artifact@v4
         with:
-          name: MatVisionStudio-MatOnly-0.1.10-Windows-x64
+          name: MatVisionStudio-MatOnly-0.2.0-Windows-x64
           path: |
             src-tauri/target/release/matvision-studio.exe
             docs/licenses/

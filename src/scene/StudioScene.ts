@@ -10,6 +10,7 @@ import {
   PCFShadowMap,
   PerspectiveCamera,
   PlaneGeometry,
+  Quaternion,
   Raycaster,
   Scene,
   Sprite,
@@ -47,7 +48,14 @@ import { decodeSource } from '../textures/import';
 import { log } from '../app/log';
 import { RealtimePipeline } from './RealtimePipeline';
 import { decodeMaterials, type DecodedMaterials } from '../materials/assets';
-import { createPhotoSnapshot } from '../photo/snapshot';
+import {
+  RENDER_BUDGET,
+  budgetPixelRatio,
+  budgetViolations,
+  exportWithinBudget,
+  governRenderScale,
+  type GovernorState,
+} from './budget';
 import { createMatVisionScene, type MatVisionScene } from '../scene-core/MatVisionScene';
 import { ThreeSceneAdapter, type MatVisionRealtimeBackend } from './ThreeSceneAdapter';
 
@@ -129,6 +137,18 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
   private fps = 0;
   private bounds = new Vector3();
   private showcase: ShowcasePlayback | null = null;
+  /** Frames still owed after a change; the loop draws nothing while this is zero and the camera rests. */
+  private dirtyFrames = 2;
+  private lastRenderTime = 0;
+  private wasRendering = false;
+  private readonly renderedPosition = new Vector3();
+  private readonly renderedTarget = new Vector3();
+  private readonly renderedQuaternion = new Quaternion();
+  private renderedFov = 0;
+  private governor: GovernorState = { scale: 1, cooldown: 0 };
+  private governorFrames = 0;
+  private governorMs = 0;
+  private reportedViolations = '';
 
   constructor(
     private readonly host: HTMLElement,
@@ -208,7 +228,7 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
     this.environment = createStudioEnvironment(
       this.renderer,
       state.environment,
-      QUALITY_SETTINGS[state.quality].environmentWidth,
+      this.environmentWidth(),
     );
     this.scene.environment = this.environment.texture;
     this.applyEnvironmentSettings();
@@ -239,55 +259,17 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
   get controls() {
     return this.rig.controls;
   }
-  pauseForPhoto() {
-    if (this.exporting || this.disposed || this.contextLost)
-      throw new Error('Сцена сейчас недоступна для фото.');
-    const start = performance.now(),
-      controlsEnabled = this.controls.enabled;
-    this.exporting = true;
-    this.controls.enabled = false;
-    let resumed = false;
-    return () => {
-      if (resumed) return;
-      resumed = true;
-      if (this.showcase) this.showcase.start += performance.now() - start;
-      this.previousFrameTime = performance.now();
-      this.exporting = false;
-      this.controls.enabled = controlsEnabled;
-    };
-  }
-  get hasFabricHeightMap(): boolean {
-    return Boolean(this.fabric.material.bumpMap);
-  }
-  preparePhoto(
-    textureSize: number,
-    signal: AbortSignal,
-    lighting: 'studio' | 'hdri' = 'hdri',
-    displacementMm = 0,
-  ) {
-    const product = getProduct(this.state.productId);
-    return createPhotoSnapshot({
-      renderer: this.renderer,
-      mat: this.mat,
-      floor: this.floor,
-      camera: this.camera,
-      state: this.state,
-      fabric: this.fabric.material,
-      widthMm: product.widthMm,
-      heightMm: product.heightMm,
-      textureSize,
-      signal,
-      lighting,
-      displacementMm,
-    });
+  /** Request a redraw. Two frames cover resources that upload on first use. */
+  invalidate(frames = 2) {
+    this.dirtyFrames = Math.max(this.dirtyFrames, frames);
   }
   private applyQuality() {
     const quality = QUALITY_SETTINGS[this.state.quality];
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, quality.pixelRatio));
-    if (this.key.shadow.mapSize.x !== quality.shadowSize) {
+    const shadowSize = Math.min(quality.shadowSize, RENDER_BUDGET.maxShadowMapSize);
+    if (this.key.shadow.mapSize.x !== shadowSize) {
       this.key.shadow.map?.dispose();
       this.key.shadow.map = null;
-      this.key.shadow.mapSize.set(quality.shadowSize, quality.shadowSize);
+      this.key.shadow.mapSize.set(shadowSize, shadowSize);
       this.key.shadow.needsUpdate = true;
     }
     this.fitShadowToProduct();
@@ -309,6 +291,7 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
   }
   syncScene(scene: MatVisionScene) {
     this.adapter.syncScene(scene);
+    this.invalidate();
   }
   renderFrame() {
     this.references.position.copy(this.mat.position);
@@ -329,14 +312,21 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
     if (changed) {
       this.fabric.setEnhancedMicrorelief(enabled);
       this.renderer.shadowMap.needsUpdate = true;
+      this.invalidate();
     }
     return changed;
+  }
+  private environmentWidth() {
+    return Math.min(
+      QUALITY_SETTINGS[this.state.quality].environmentWidth,
+      RENDER_BUDGET.maxEnvironmentWidth,
+    );
   }
   private replaceEnvironment() {
     const next = createStudioEnvironment(
       this.renderer,
       this.state.environment,
-      QUALITY_SETTINGS[this.state.quality].environmentWidth,
+      this.environmentWidth(),
     );
     const previous = this.environment;
     this.environment = next;
@@ -360,6 +350,7 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
         for (const maps of Object.values(this.materialAssets.textures))
           for (const texture of Object.values(maps)) texture.needsUpdate = true;
       this.contextLost = false;
+      this.invalidate();
       this.onError('');
       log('RENDERER', 'context-restored');
     } catch {
@@ -370,10 +361,22 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
     if (this.exporting) return;
     const { width, height } = this.host.getBoundingClientRect();
     if (width < 1 || height < 1) return;
+    // Resolution is always derived from the budget: preset, frame pixel limit and governor.
+    this.renderer.setPixelRatio(
+      budgetPixelRatio({
+        devicePixelRatio: window.devicePixelRatio,
+        presetPixelRatio: QUALITY_SETTINGS[this.state.quality].pixelRatio,
+        cssWidth: width,
+        cssHeight: height,
+        renderScale: this.governor.scale,
+        detailed: this.state.realism.mode === 'detailed',
+      }),
+    );
     this.renderer.setSize(width, height);
     this.pipeline.resize();
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    this.invalidate();
   };
   private clearReferences() {
     this.references.disposeContents();
@@ -452,6 +455,7 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
   }
   private applyRoll() {
     this.renderer.shadowMap.needsUpdate = true;
+    this.invalidate();
     this.rollDeformer.apply(
       getProduct(this.state.productId).heightMm / 1000,
       this.state.thicknessMm / 1000,
@@ -595,6 +599,7 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
   }
   update(state: ProjectState) {
     this.renderer.shadowMap.needsUpdate = true;
+    this.invalidate();
     const before = this.state;
     const newProduct = state.productId !== before.productId;
     const rebuild =
@@ -621,6 +626,8 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
       state.realism.contactShadow !== before.realism.contactShadow
     )
       this.pipeline.configure(state.realism.mode === 'detailed', state.realism.contactShadow);
+    // Detailed mode has a smaller frame pixel budget.
+    if (state.realism.mode !== before.realism.mode) this.resize();
     this.printLayer.update(this.sourceDimensions, product.printableArea, state.layout);
     this.references.visible = state.referenceMode && !this.rig.underside;
     if (state.referenceMode !== before.referenceMode) {
@@ -665,6 +672,7 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
     this.fabric.setMaps(next.textures.fabric);
     this.rubber.setMaps(next.textures.rubber);
     previous?.dispose();
+    this.invalidate();
   }
   /** Opening a project is atomic across artwork and all material maps. */
   async loadProject(state: ProjectState): Promise<PreviewResolution | null | undefined> {
@@ -710,6 +718,7 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
     }
     this.restoreCamera(state.camera);
     previous?.dispose();
+    this.invalidate();
     return next ? { widthPx: next.widthPx, heightPx: next.heightPx } : null;
   }
   async setPrintSource(source: PrintSource | null): Promise<PreviewResolution | null> {
@@ -743,6 +752,7 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
       this.state.layout,
     );
     previous?.dispose();
+    this.invalidate();
     log('TEXTURE', 'preview-ready', {
       width: next?.widthPx ?? 1800,
       height: next?.heightPx ?? 800,
@@ -752,6 +762,7 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
   setEditPrint(enabled: boolean) {
     this.editPrint = enabled;
     if (!enabled) this.printDrag = null;
+    this.invalidate();
   }
   private pointOnMat(event: PointerEvent): Vector3 | null {
     if (!this.surface) return null;
@@ -836,17 +847,64 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
   getCameraState(): CameraState {
     return this.showcase?.camera ?? this.rig.getState();
   }
+  private cameraMoved(): boolean {
+    return (
+      this.camera.fov !== this.renderedFov ||
+      this.camera.position.distanceToSquared(this.renderedPosition) > 1e-12 ||
+      this.controls.target.distanceToSquared(this.renderedTarget) > 1e-12 ||
+      Math.abs(this.camera.quaternion.dot(this.renderedQuaternion)) < 1 - 1e-10
+    );
+  }
+  /** One governor decision per window of uninterrupted frames. */
+  private govern(continuous: boolean, tickMs: number) {
+    if (!continuous) {
+      this.governorFrames = 0;
+      this.governorMs = 0;
+      return;
+    }
+    this.governorFrames++;
+    this.governorMs += tickMs;
+    if (this.governorFrames < RENDER_BUDGET.governorWindowFrames) return;
+    const average = this.governorMs / this.governorFrames;
+    this.governorFrames = 0;
+    this.governorMs = 0;
+    const next = governRenderScale(this.governor, average);
+    const changed = Math.abs(next.scale - this.governor.scale) > 0.001;
+    this.governor = next;
+    if (changed) {
+      log('PERFORMANCE', 'render-scale', { scale: next.scale, averageFrameMs: average });
+      this.resize();
+    }
+  }
   private animate = () => {
     if (this.disposed) return;
     this.frame = requestAnimationFrame(this.animate);
     const now = performance.now(),
-      dt = Math.min(0.1, (now - this.previousFrameTime) / 1000);
+      tickMs = now - this.previousFrameTime,
+      dt = Math.min(0.1, tickMs / 1000);
     this.previousFrameTime = now;
-    if (this.contextLost || this.exporting || this.shaderFailed) return;
-    if (this.state.turntable && !this.editPrint && !this.showcase) this.mat.rotation.y += dt * 0.12;
+    if (this.contextLost || this.exporting || this.shaderFailed) {
+      this.wasRendering = false;
+      return;
+    }
+    const turning = this.state.turntable && !this.editPrint && !this.showcase;
+    if (turning) this.mat.rotation.y += dt * 0.12;
     if (this.showcase?.id !== 'edge-flyby') this.rig.update(now, this.state.thicknessMm);
+    const animating = turning || Boolean(this.showcase);
     this.updateShowcase(now);
-    if (this.showcase || this.state.turntable) this.renderer.shadowMap.needsUpdate = true;
+    const active = animating || this.cameraMoved();
+    // Render on demand: a resting scene costs no GPU work beyond a slow safety refresh.
+    if (
+      !active &&
+      this.dirtyFrames === 0 &&
+      now - this.lastRenderTime < RENDER_BUDGET.idleRefreshMs
+    ) {
+      this.wasRendering = false;
+      return;
+    }
+    this.govern(active && this.wasRendering, tickMs);
+    this.wasRendering = active;
+    if (animating) this.renderer.shadowMap.needsUpdate = true;
     // A user can interrupt a transition before it crosses the mat. Use the actual
     // camera hemisphere so the floor never obscures a cancelled underside view.
     this.floor.visible = this.camera.position.y >= this.state.thicknessMm / 2000;
@@ -861,6 +919,12 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
     }
     this.background.position.copy(this.camera.position);
     this.renderFrame();
+    this.renderedPosition.copy(this.camera.position);
+    this.renderedTarget.copy(this.controls.target);
+    this.renderedQuaternion.copy(this.camera.quaternion);
+    this.renderedFov = this.camera.fov;
+    this.lastRenderTime = now;
+    if (this.dirtyFrames > 0) this.dirtyFrames--;
     this.frameCount++;
     this.intervalFrames++;
     this.host.dataset.rendererState = 'ready';
@@ -874,15 +938,14 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
     if (this.contextLost || this.disposed || this.shaderFailed)
       throw new Error('Графика недоступна для экспорта.');
     if (this.exporting) throw new Error('Экспорт уже выполняется.');
-    if (this.state.realism.mode === 'detailed' && options.widthPx * options.heightPx > 10_000_000)
+    const limit = Math.min(
+      RENDER_BUDGET.maxExportEdgePx,
+      this.renderer.capabilities.maxTextureSize,
+    );
+    if (!exportWithinBudget(options.widthPx, options.heightPx, limit))
       throw new Error(
-        'Детальный PNG ограничен 10 мегапикселями. Уменьшите размер или выберите быстрый режим.',
+        `Снимок PNG ограничен ${limit} px по стороне и ${(RENDER_BUDGET.maxExportPixels / 1e6).toFixed(1)} Мп.`,
       );
-    const limit = Math.min(8192, this.renderer.capabilities.maxTextureSize);
-    if (
-      ![options.widthPx, options.heightPx].every((n) => Number.isInteger(n) && n > 0 && n <= limit)
-    )
-      throw new Error(`Экспорт поддерживает размеры от 1 до ${limit} px.`);
     this.exporting = true;
     const size = this.renderer.getSize(new Vector2()),
       ratio = this.renderer.getPixelRatio(),
@@ -928,8 +991,27 @@ export class StudioScene implements SceneController, MatVisionRealtimeBackend {
       environmentHeight: this.environment.height,
       shadowSize: this.key.shadow.mapSize.x,
     });
+    const violations = budgetViolations({
+      triangles: this.renderer.info.render.triangles,
+      drawCalls: this.renderer.info.render.calls,
+      approximateTextureBytes,
+      rendererWidthPx: size.x,
+      rendererHeightPx: size.y,
+      shadowSize: this.key.shadow.mapSize.x,
+      environmentWidth: this.environmentWidth(),
+      detailed: this.state.realism.mode === 'detailed',
+    });
+    const signature = violations.join(',');
+    if (signature !== this.reportedViolations && !this.exporting) {
+      this.reportedViolations = signature;
+      if (signature) log('PERFORMANCE', 'budget-exceeded', { violations: signature });
+    }
     return {
       ready: this.frameCount > 0,
+      renderScale: this.governor.scale,
+      pixelRatio: this.renderer.getPixelRatio(),
+      idle: !this.wasRendering,
+      budgetViolations: violations,
       renderer: 'WebGL2',
       productId: this.state.productId,
       widthM: this.bounds.x,

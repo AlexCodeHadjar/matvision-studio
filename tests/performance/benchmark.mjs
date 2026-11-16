@@ -231,7 +231,7 @@ try {
   await sample('4K source · Balanced · perspective');
   await upload(image8K, 'benchmark-8k.png', 8192, 4096);
   await sample('8K source · Balanced · downsampled preview');
-  for (const preset of ['low', 'high', 'ultra']) {
+  for (const preset of ['low', 'balanced', 'high']) {
     await quality(preset);
     await sample(`8K source · ${preset} · perspective`);
   }

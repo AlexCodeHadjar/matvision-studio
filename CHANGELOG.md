@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.2.0 — 2026-11-16
+
+Realtime-only release. The application now only shows mats in the interactive viewport.
+
+- Removed Photo (three-gpu-pathtracer) and Ultimate (Blender Cycles): UI, TypeScript modules, the Rust `cycles` commands, the Python scripts, their tests, fixtures, licences and the 6.3 MiB studio HDR panorama. No Python remains in the project.
+- Added hard limits in `src/scene/budget.ts`, enforced in code and by unit tests: frame pixels (3.69 MP, 2.07 MP in detailed mode), pixel ratio 2, shadow map 2048², environment 1024 px, print preview 4096 px, PNG snapshot 4096 px / 8.3 MP, triangles and draw calls per frame, owned texture bytes, and JavaScript bundle size (checked by `build`).
+- Render on demand: the scene is redrawn only when the camera, project or an animation changes. A resting scene refreshes at most twice per second instead of 60 times.
+- Added a render-scale governor: sustained frames slower than 22 ms lower the resolution in steps down to 0.5 and raise it again after a cooldown.
+- Removed the `ultra` quality preset. Older projects that use it open as `high`. New projects start on `balanced` instead of `ultra`.
+- Detailed mode uses N8AO High and SMAA High instead of Ultra.
+- Diagnostics report render scale, pixel ratio, idle state and exceeded limits.
+- Not re-run: browser screenshot baselines, native WebdriverIO tests and hardware benchmarks. The baselines predate these changes and need regenerating.
+
 ## 0.1.10 — 2026-10-26
 
 - Replaced the 500 mm reference sample with full-width and full-height centimetre rulers whose endpoints align with the selected mat's edges, including exact non-round sizes such as 18 × 22 cm.

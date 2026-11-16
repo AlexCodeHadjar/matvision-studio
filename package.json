@@ -1,12 +1,12 @@
 {
   "name": "matvision-studio",
-  "version": "0.1.10",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "packageManager": "pnpm@11.19.0",
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 1420 --strictPort",
-    "build": "pnpm typecheck && vite build",
+    "build": "pnpm typecheck && vite build && node scripts/check-bundle-budget.mjs",
     "preview": "vite preview --host 127.0.0.1 --port 1420 --strictPort",
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -24,9 +24,7 @@
     "postprocessing": "6.39.5",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "three": "0.186.0",
-    "three-gpu-pathtracer": "0.0.24",
-    "three-mesh-bvh": "0.9.5"
+    "three": "0.186.0"
   },
   "devDependencies": {
     "@playwright/test": "1.63.0",

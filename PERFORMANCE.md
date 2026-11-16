@@ -2,6 +2,8 @@
 
 ## Version scope
 
+Sections below the hard limits describe versions up to 0.1.3 and are kept as history.
+
 Version **0.1.3** adds CPU deformation of reusable position/normal and yarn-instance buffers, with denser strips along the bend direction. It recomputes bounds when roll position changes. No sustained benchmark or updated performance acceptance was run; historical 0.1.0 numbers must not be applied to animation. The retained flat geometry/instance arrays add CPU storage, not new texture maps.
 
 Version **0.1.2** adds a reusable set of three 512 × 512 surface maps (approximately 4 MiB with mipmaps) and adjusts shadow framing/filtering. The performance matrix was not rerun at the user's request; earlier measurements do not apply to this update.
@@ -19,14 +21,48 @@ bounded preview of the artwork; original image pixels and encoded bytes remain i
 for DPI calculations and persistence. Original dimensions must never be inferred from GPU
 preview dimensions.
 
-## Quality budgets
+## Hard limits (0.2.0)
+
+Version **0.2.0** is realtime-only. Every limit is a constant in `src/scene/budget.ts`; the
+renderer clamps to it and `src/scene/budget.test.ts` fails when a preset, a product or a code
+path can exceed it. None of the numbers below is a measured frame rate: no hardware benchmark
+was run for 0.2.0.
+
+| Limit                      | Value                                            |
+| -------------------------- | ------------------------------------------------ |
+| Frame target               | 60 FPS (16.7 ms)                                 |
+| Governor lowers resolution | average frame above 22 ms over 30 frames         |
+| Governor raises resolution | average at or below 17.5 ms, after a cooldown    |
+| Render scale floor         | 0.5                                              |
+| Resting scene              | at most one refresh per 500 ms                   |
+| Frame pixels               | 3,686,400 (2560 × 1440); detailed mode 2,073,600 |
+| Pixel ratio                | 2                                                |
+| Shadow map                 | 2048 × 2048                                      |
+| Environment source         | 1024 × 512                                       |
+| Print preview edge         | 4096 px                                          |
+| Owned texture estimate     | 256 MiB                                          |
+| Triangles per frame        | 2,000,000 (largest stitched mat: about 1.61 M)   |
+| Draw calls per frame       | 64                                               |
+| PNG snapshot               | 4096 px per edge and 8,294,400 px                |
+| Largest JavaScript chunk   | 1,600,000 bytes (0.2.0 build: 1,488,815)         |
+
+The governor measures intervals between consecutive animation frames. A display that refreshes
+slower than about 45 Hz therefore reads as slow and settles at a lower render scale.
+`getDiagnostics()` returns `renderScale`, `pixelRatio`, `idle` and `budgetViolations`; a
+violation is also logged once as `PERFORMANCE budget-exceeded`.
+
+The individual yarn loops of a stitched edge are the largest remaining cost: 336 triangles for
+each of up to 4,160 instances. They are hidden when a stitch covers less than one pixel.
+
+## Quality presets
 
 | Preset             | Maximum preview edge | Maximum pixel ratio |  Shadow map | HDR source panorama |
 | ------------------ | -------------------: | ------------------: | ----------: | ------------------: |
 | Low                |              2048 px |                   1 |   512 × 512 |           256 × 128 |
 | Balanced (default) |              4096 px |                 1.5 | 1024 × 1024 |           512 × 256 |
 | High               |              4096 px |                   2 | 2048 × 2048 |          1024 × 512 |
-| Ultra              |              8192 px |                   2 | 4096 × 4096 |         2048 × 1024 |
+
+The `ultra` preset was removed in 0.2.0; projects that use it open as `high`.
 
 The effective preview edge is the lesser of the preset limit and `MAX_TEXTURE_SIZE`.
 Small images are not enlarged. Aspect ratio is retained to the nearest preview pixel.

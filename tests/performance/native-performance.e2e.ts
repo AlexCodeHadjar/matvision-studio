@@ -232,7 +232,7 @@ describe('Production Tauri performance — foreground hardware WebView2', () => 
       await drop(source8K, 'native-benchmark-8k.png', 8192, 4096);
       report.samples.push(await sample('8K source · Balanced · downsampled preview'));
       save();
-      const presets = ['low', 'high', 'ultra'];
+      const presets = ['low', 'balanced', 'high'];
       for (const preset of presets) {
         await $('button[aria-label="Настройки"]').click();
         await $('select[aria-label="Качество viewport"]').selectByAttribute('value', preset);

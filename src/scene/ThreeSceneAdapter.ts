@@ -146,7 +146,7 @@ const SOFTBOX_PROFILE = [
   },
 ] as const;
 
-/** Studio owns one existing loop. Photo is a separate long-running backend. */
+/** Studio owns the single realtime loop; there is no offline renderer. */
 export interface MatVisionRealtimeBackend {
   readonly id: 'three-realtime';
   syncScene(scene: MatVisionScene): void;

@@ -180,7 +180,6 @@ export const PREVIEW_EDGE_LIMITS: Readonly<Record<QualityPreset, number>> = Obje
   low: 2048,
   balanced: 4096,
   high: 4096,
-  ultra: 8192,
 });
 export function computePreviewResolution(
   image: PreviewResolution,

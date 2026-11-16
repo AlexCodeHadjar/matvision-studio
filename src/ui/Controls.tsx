@@ -226,7 +226,6 @@ export function Settings({
           <option value="low">Low</option>
           <option value="balanced">Balanced</option>
           <option value="high">High</option>
-          <option value="ultra">Ultra</option>
         </select>
       </label>
       <h3>Профиль материала</h3>

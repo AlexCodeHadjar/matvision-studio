@@ -45,7 +45,7 @@ export class RealtimePipeline {
       });
       this.composer.addPass(new RenderPass(this.scene, this.camera));
       this.ao = new N8AOPostPass(this.scene, this.camera);
-      this.ao.setQualityMode('Ultra');
+      this.ao.setQualityMode('High');
       this.ao.configuration.halfRes = false;
       this.ao.configuration.aoRadius = 0.008;
       this.ao.configuration.distanceFalloff = 0.8;
@@ -56,7 +56,7 @@ export class RealtimePipeline {
         new EffectPass(this.camera, new ToneMappingEffect({ mode: ToneMappingMode.ACES_FILMIC })),
       );
       this.composer.addPass(
-        new EffectPass(this.camera, new SMAAEffect({ preset: SMAAPreset.ULTRA })),
+        new EffectPass(this.camera, new SMAAEffect({ preset: SMAAPreset.HIGH })),
       );
       this.resize();
     }

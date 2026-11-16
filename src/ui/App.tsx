@@ -32,8 +32,7 @@ import { Viewport } from './Viewport';
 import { ProductPicker } from './ProductPicker';
 import { RollControls } from './RollControls';
 import { RealismControls } from './RealismControls';
-import { PhotoDialog } from './PhotoDialog';
-import { UltimateDialog } from './UltimateDialog';
+import { RENDER_BUDGET } from '../scene/budget';
 import { loadLibraryFabric } from '../materials/library';
 import { Help, MaterialControls, PrintControls, Settings, Slider } from './Controls';
 import './styles.css';
@@ -63,8 +62,6 @@ export function App() {
   const [hiddenUI, setHiddenUI] = useState(false);
   const [settings, setSettings] = useState(false);
   const [help, setHelp] = useState(false);
-  const [photo, setPhoto] = useState(false);
-  const [ultimate, setUltimate] = useState(false);
   const [busy, setBusyState] = useState('');
   const busyRef = useRef('');
   const setBusy = (message: string) => {
@@ -303,12 +300,14 @@ export function App() {
       fail(new Error('3D-сцена ещё не готова к экспорту.'));
       return;
     }
-    setBusy('Рендер PNG…');
+    setBusy('Сохранение снимка PNG…');
     setNotice(null);
     try {
       const d = controller.getDiagnostics();
       const scale =
-        exportPreset === 'high' ? 3840 / Math.max(d.rendererWidthPx, d.rendererHeightPx) : 1;
+        exportPreset === 'high'
+          ? RENDER_BUDGET.exportHighEdgePx / Math.max(d.rendererWidthPx, d.rendererHeightPx)
+          : 1;
       const blob = await controller.exportPng({
         widthPx: Math.max(1, Math.round(d.rendererWidthPx * scale)),
         heightPx: Math.max(1, Math.round(d.rendererHeightPx * scale)),
@@ -445,12 +444,6 @@ export function App() {
           </button>
           <button disabled={!!busy} onClick={() => void exportPreview()} title="Ctrl+E">
             Экспорт PNG
-          </button>
-          <button disabled={!!busy} onClick={() => setPhoto(true)}>
-            Фото
-          </button>
-          <button disabled={!!busy} onClick={() => setUltimate(true)}>
-            Ultimate
           </button>
           <button
             onClick={() => {
@@ -651,7 +644,7 @@ export function App() {
             notice?.text ||
             `${product.displayName} / ${product.widthMm} × ${product.heightMm} × ${state.thicknessMm} мм`}
         </span>
-        <span>Studio Preview · sRGB · WebGL2</span>
+        <span>Реальное время · sRGB · WebGL2</span>
       </footer>
       {hiddenUI && (
         <button className="restore-ui" onClick={() => setHiddenUI(false)} title="H">
@@ -673,12 +666,6 @@ export function App() {
       )}
       {settings && <Settings state={state} onChange={patch} onClose={() => setSettings(false)} />}
       {help && <Help onClose={() => setHelp(false)} />}
-      {photo && scene.current && (
-        <PhotoDialog scene={scene.current} onClose={() => setPhoto(false)} />
-      )}
-      {ultimate && scene.current && (
-        <UltimateDialog scene={scene.current} state={state} onClose={() => setUltimate(false)} />
-      )}
       <input
         data-testid="image-input"
         ref={imageInput}

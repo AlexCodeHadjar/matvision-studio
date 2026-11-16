@@ -12,7 +12,7 @@ export const PLACEMENT_SURFACES: readonly PlacementSurface[] = [
   'concrete',
 ];
 export type CameraPreset = 'top' | 'perspective' | 'low-angle' | 'close-up' | 'macro' | 'underside';
-export type QualityPreset = 'low' | 'balanced' | 'high' | 'ultra';
+export type QualityPreset = 'low' | 'balanced' | 'high';
 export type MaterialTarget = 'fabric' | 'rubber';
 export type MaterialMapKind = 'color' | 'normal' | 'roughness' | 'height';
 export interface MaterialAssets {

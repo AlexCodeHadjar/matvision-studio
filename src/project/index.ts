@@ -67,7 +67,7 @@ export function createDefaultProject(productId = 'deskmat-900x400'): ProjectStat
       target: [...product.defaultCameraFraming.target],
       fovDeg: product.defaultCameraFraming.fovDeg,
     },
-    quality: 'ultra',
+    quality: 'balanced',
     turntable: false,
     referenceMode: false,
     materialProfile: createDefaultMaterialProfile(),
@@ -256,7 +256,12 @@ export function validateProjectState(value: unknown): ProjectState {
     layout: layout(input.layout),
     source: source(input.source),
     camera: camera(input.camera),
-    quality: option(input.quality, ['low', 'balanced', 'high', 'ultra'], 'quality'),
+    // Projects saved before 0.2.0 may carry the removed 'ultra' preset.
+    quality: option(
+      input.quality === 'ultra' ? 'high' : input.quality,
+      ['low', 'balanced', 'high'],
+      'quality',
+    ),
     turntable: boolean(input.turntable, 'turntable'),
     referenceMode: boolean(input.referenceMode, 'reference mode'),
     materialProfile: profile(input.materialProfile),

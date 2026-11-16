@@ -2,7 +2,7 @@
 
 Тексты лицензий добавленных графических компонентов находятся в `docs/licenses/` и входят в Windows-поставку. Полный состав зависимостей фиксируют `pnpm-lock.yaml` и `src-tauri/Cargo.lock`; условия остальных пакетов доступны в их дистрибутивах.
 
-- Three.js, three-gpu-pathtracer, three-mesh-bvh: MIT.
+- Three.js: MIT.
 - postprocessing: zlib.
 - N8AO: метаданные npm указывают ISC, поставляемый LICENSE — CC0 1.0; исходный текст сохранён без исправления этой разницы.
 - Poly Haven: CC0. [Файлы, авторы, ссылки и контрольные суммы](licenses/polyhaven-assets.md).
